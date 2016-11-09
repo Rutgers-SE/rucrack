@@ -1,0 +1,10 @@
+[package]
+name = "infopro1"
+version = "0.1.0"
+authors = ["alexander sanchez <asanchez.dev@gmail.com>"]
+
+[dependencies]
+rust-crypto = "^0.2"
+rand = "*"
+num = "*"
+time = "*"
