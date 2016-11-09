@@ -4,11 +4,6 @@
 
 extern crate crypto;
 extern crate rand;
-extern crate num;
-// extern crate time;
-
-// use time::now;
-
 use std::{thread, time};
 
 use crypto::{symmetriccipher, buffer, aes, blockmodes};
@@ -23,9 +18,6 @@ use std::io::prelude::*;
 use std::fs::File;
 use std::iter::Iterator;
 use std::path::Path;
-use num::bigint::{BigInt, ToBigInt, Sign};
-
-use num::PrimInt;
 
 fn u8_vector(amount: u8) -> Vec<u8> {
     let mut v: Vec<u8> = vec![];
@@ -146,7 +138,7 @@ fn read_file_from_arg(arg: Option<String>) -> Option<Vec<u8>> {
     }
 }
 
-fn is_english() -> bool {
+fn is_english(plain_text: String) -> bool {
     true
 }
 
@@ -244,20 +236,54 @@ impl KeyPool {
 
 // returns potential keys
 fn crack(cipher_text: &Vec<u8>) -> Vec<Vec<u8>> {
-    let output: Vec<Vec<u8>> = vec![];
+    // define the output
+    let mut output: Vec<Vec<u8>> = vec![];
 
-    output
-}
-
-fn main() {
+    println!("I'm here");
+    // load the iv file
     let iv_bytes = match read_file_from_arg(args().nth(1)) {
         Some(file_bytes) => file_bytes,
         None => panic!("Need to provide the IV file"),
     };
-    // let message = "This is a test of the message";
+
+    // setup the key pool
+    let iv = iv_bytes.len() as u8;
+    let im = 16 - iv_bytes.len() as u8;
+    let mut kp = KeyPool::new(iv, im, 0);
+    // ind the iv to the MSB
+    kp.static_ms_bytes = iv_bytes;
+
+    while !kp.is_done() {
+
+        match decrypt(&cipher_text[..], &kp.to_vec()) {
+            Ok(decrypted_data) => {
+                match from_utf8(&decrypted_data) {
+                    Ok(pt) => {
+                        if is_english(pt.to_string()) {
+                            output.push(kp.to_vec())
+                        }
+                    }
+                    Err(_) => ()
+                }
+            }
+            Err(_) => ()
+        }
+
+        kp = kp.inc();
+    }
+    output
+}
+
+fn main() {
+    // args().nth(1)
+    let iv_bytes = match read_file_from_arg(args().nth(1)) {
+        Some(file_bytes) => file_bytes,
+        None => panic!("Need to provide the IV file"),
+    };
+    let message = "This is a test of the message";
     //
     //
-    let mut key0: [u8; 16] = [0; 16];
+    // let mut key0: [u8; 16] = [0; 16];
     //
     let mut rng = OsRng::new().ok().unwrap();
     // rng.fill_bytes(&mut key0);
@@ -287,23 +313,35 @@ fn main() {
     // let mut over = 255 as u8;
     // let tmp = over;
     // over = over.inc().inc();
+    // let iv = iv_bytes.len() as u8;
+    // let im = 16 - iv_bytes.len() as u8;
+    // let mut kp = KeyPool::new(iv, im, 0);
+    // kp.static_ms_bytes = iv_bytes;
+    // rng.fill_bytes(&mut kp.dynamic_bytes);
+
     let iv = iv_bytes.len() as u8;
     let im = 16 - iv_bytes.len() as u8;
     let mut kp = KeyPool::new(iv, im, 0);
-
     kp.static_ms_bytes = iv_bytes;
-    // rng.fill_bytes(&mut kp.dynamic_bytes);
+    rng.fill_bytes(&mut kp.dynamic_bytes);
+    let key = kp.to_vec();
+
+    let cipher_text = encrypt(message.as_bytes(), &key).ok().unwrap();
+
     let mut count = 0;
 
-    while !kp.is_done() {
-        if count % 1024 == 0 {
-            println!("{:?}", kp.to_vec());
-        }
-        kp = kp.inc();
-        // thread::sleep(time::Duration::from_millis(100));
-        count += 1;
-    }
+    // while !kp.is_done() {
+    //     if count % 1024 == 0 {
+    //         println!("{:?}", kp.to_vec());
+    //     }
+    //     kp = kp.inc();
+    //     // thread::sleep(time::Duration::from_millis(100));
+    //     count += 1;
+    // }
+    let keys = crack(&cipher_text);
 
-    println!("{:?}", kp.to_vec());
+    println!("Actual Key   {:?}", key);
+    println!("Cipher Text  {:?}", cipher_text);
+    println!("Cracked Keys {:?}", keys);
 
 }
