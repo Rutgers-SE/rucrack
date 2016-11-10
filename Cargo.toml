@@ -7,4 +7,4 @@ authors = ["alexander sanchez <asanchez.dev@gmail.com>"]
 rust-crypto = "^0.2"
 rand = "*"
 # num = "*"
-# time = "*"
+time = "*"

@@ -4,7 +4,11 @@
 
 extern crate crypto;
 extern crate rand;
-use std::{thread, time};
+extern crate time;
+
+use time::PreciseTime;
+
+// use std::{thread, time};
 
 use crypto::{symmetriccipher, buffer, aes, blockmodes};
 use crypto::buffer::{ReadBuffer, WriteBuffer, BufferResult};
@@ -28,13 +32,11 @@ fn load_linux_dictionary() -> Option<Vec<String>> {
             let mut buffer = String::new();
             match file.read_to_string(&mut buffer) {
                 Ok(_) => {
-                    output = buffer
-                        .split("\n")
-                        .map(|x| x.to_string() )
-                        .collect();
-                    Some(output)
+                    Some(buffer.split("\n")
+                        .map(|x| x.to_string())
+                        .collect())
                 }
-                Err(_) => None
+                Err(_) => None,
             }
         }
         Err(_) => None,
@@ -171,10 +173,12 @@ fn is_english(plain_text: String) -> bool {
 
 trait WrappedInc {
     fn inc(self) -> Self;
+    fn dec(self) -> Self;
 }
 
 trait WrappedStep {
     fn step(self, &Self) -> Self;
+    fn back(self, &Self) -> Self;
 }
 
 impl WrappedStep for u8 {
@@ -187,6 +191,9 @@ impl WrappedStep for u8 {
         }
         output
     }
+    fn back(self, other: &Self) -> Self {
+        self
+    }
 }
 
 impl WrappedInc for u8 {
@@ -196,12 +203,20 @@ impl WrappedInc for u8 {
             _ => self + 1u8,
         }
     }
+
+    fn dec(self) -> Self {
+        match self {
+            0u8 => 255u8,
+            _ => self - 1,
+        }
+    }
 }
 
 
 #[derive(Debug, Clone)]
 struct KeyPool {
-    parition_count: i64,
+    dynamic_ms_cap: u8,
+    parition_count: u8,
     static_ms_bytes: Vec<u8>,
     dynamic_bytes: Vec<u8>,
     static_ls_bytes: Vec<u8>,
@@ -209,8 +224,11 @@ struct KeyPool {
 
 impl KeyPool {
     fn new(parition_count: i64, ms_bytes: u8, dy_bytes: u8, ls_bytes: u8) -> KeyPool {
+        let cap = (256 / parition_count);
+        println!("{} {}", cap, parition_count);
         KeyPool {
-            parition_count: parition_count,
+            dynamic_ms_cap: (cap as u8).dec(),
+            parition_count: parition_count as u8,
             static_ms_bytes: u8_vector(ms_bytes),
             dynamic_bytes: u8_vector(dy_bytes),
             static_ls_bytes: u8_vector(ls_bytes),
@@ -218,24 +236,23 @@ impl KeyPool {
     }
 
     // returns a vector of keys containing the amount specified by the `parition_count`
-    fn generate_keys(&self) -> Vec<KeyPool> {
+    fn generate_keys(parition_count: i64, dynamic_byte_len: i64) -> Vec<KeyPool> {
         let mut output: Vec<KeyPool> = vec![];
-        let step = (256 / self.parition_count) as u8;
-        println!("Step: {}", step);
-        let mut cursor = self.dynamic_bytes[0];
-        println!("Awesome: {:?}", self.dynamic_bytes);
+        let step = 256 / parition_count;
+        let mut cursor = 0;
 
-        for key_id in 0..self.parition_count {
-            let mut db = u8_vector(self.dynamic_bytes.len() as u8);
+        for key_id in 0..parition_count {
+            let mut db = u8_vector(dynamic_byte_len as u8);
             println!("Cursor: {}", cursor);
             db[0] = cursor;
             output.push(KeyPool {
-                parition_count: self.parition_count.clone(),
-                static_ms_bytes: self.static_ms_bytes.clone(),
+                dynamic_ms_cap: cursor - 1,
+                parition_count: parition_count as u8,
+                static_ms_bytes: vec![],
                 dynamic_bytes: db,
-                static_ls_bytes: self.static_ls_bytes.clone(),
+                static_ls_bytes: vec![]
             });
-            cursor = cursor.step(&step);
+            cursor = cursor.step(&(step as u8));
         }
 
         output
@@ -243,8 +260,8 @@ impl KeyPool {
 
     fn is_done(&self) -> bool {
         let mut done = true;
-        for byte in self.dynamic_bytes.clone() {
-            if byte != 255 {
+        for idx in 1..self.dynamic_bytes.len() {
+            if self.dynamic_bytes[idx] != 255 || self.dynamic_bytes[0] != self.dynamic_ms_cap {
                 done = false;
                 break;
             }
@@ -280,14 +297,15 @@ impl KeyPool {
             self.dynamic_bytes[idx] = self.dynamic_bytes[idx].inc();
             let progress = tmp > self.dynamic_bytes[idx];
             if progress {
-                idx = idx - 1;
+                idx -= 1;
             } else {
                 break;
             }
         }
 
         KeyPool {
-            parition_count: 1,
+            dynamic_ms_cap: self.dynamic_ms_cap.clone(),
+            parition_count: self.parition_count.clone(),
             static_ms_bytes: self.static_ms_bytes.clone(),
             dynamic_bytes: self.dynamic_bytes.clone(),
             static_ls_bytes: self.static_ls_bytes.clone(),
@@ -346,7 +364,8 @@ fn crack(cipher_text: &Vec<u8>, dictionary: &Vec<String>) -> Vec<Vec<u8>> {
 fn main() {
     let sorted_dictionary = load_linux_dictionary().unwrap();
     // args().nth(1)
-    let iv_bytes = match read_file_from_arg(args().nth(1)) {
+    let file_name = args().nth(1).unwrap();
+    let iv_bytes = match read_file_from_arg(Some(file_name.clone())) {
         Some(file_bytes) => file_bytes,
         None => panic!("Need to provide the IV file"),
     };
@@ -390,22 +409,37 @@ fn main() {
     // initialize base key
     let iv = iv_bytes.len() as u8;
     let im = 16 - iv_bytes.len() as u8;
-    let mut kp = KeyPool::new(4, iv, im, 0);
+    let mut kp = KeyPool::new(1, iv, im, 0);
+    let mut counter = 0;
+
+    let start = PreciseTime::now();
+    while !kp.is_done() {
+        if counter % 2^10 == 0 {
+            println!("{:?}, {:?}", kp.to_vec(), kp.is_done());
+        }
+
+        counter += 1;
+        kp = kp.inc();
+    }
+    let end = PreciseTime::now();
+
+    println!("{} seconds for file {}", start.to(end), file_name);
+
 
     // set key bits
-    kp.static_ms_bytes = iv_bytes;
-    let key = kp.to_vec(); // secret key defined here
-
-    // the starting keypool
-    let mut key_chain = kp.clone();
-    let key_chain = kp.generate_keys();
-
-    // let cipher_text = encrypt(message.as_bytes(), &key).ok().unwrap();
-
-    let mut count = 0;
-
-    // assigning random bytes
-    rng.fill_bytes(&mut kp.dynamic_bytes);
+    // kp.static_ms_bytes = iv_bytes;
+    // let key = kp.to_vec(); // secret key defined here
+    //
+    // // the starting keypool
+    // let mut key_chain = kp.clone();
+    // let key_chain = kp.generate_keys();
+    //
+    // // let cipher_text = encrypt(message.as_bytes(), &key).ok().unwrap();
+    //
+    // let mut count = 0;
+    //
+    // // assigning random bytes
+    // rng.fill_bytes(&mut kp.dynamic_bytes);
 
     // while !kp.is_done() {
     //     if count % 1024 == 0 {
@@ -417,9 +451,8 @@ fn main() {
     // }
     // let keys = crack(&cipher_text);
 
-    println!("Actual Key   {:?}", key);
+    // println!("Actual Key   {:?}", key);
     // println!("Cipher Text  {:?}", cipher_text);
-    println!("Key Chain: {:?}", key_chain);
-
+    // println!("Key Chain: {:?}", key_chain);
 
 }
