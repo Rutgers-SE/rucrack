@@ -64,7 +64,7 @@ fn encrypt(data: &[u8], key: &[u8]) -> Result<Vec<u8>, symmetriccipher::Symmetri
     //     aes::cbc_encryptor(aes::KeySize::KeySize256, key, iv, blockmodes::PkcsPadding);
 
     // For the project we will use ecb
-    let mut encryptor = aes::ecb_encryptor(aes::KeySize::KeySize128, key, blockmodes::NoPadding);
+    let mut encryptor = aes::ecb_encryptor(aes::KeySize::KeySize128, key, blockmodes::PkcsPadding);
 
     // Each encryption operation encrypts some data from
     // an input buffer into an output buffer. Those buffers
@@ -127,7 +127,7 @@ fn decrypt(encrypted_data: &[u8],
     // let mut decryptor =
     //     aes::cbc_decryptor(aes::KeySize::KeySize256, key, iv, blockmodes::PkcsPadding);
     // No padding may be incorrect
-    let mut decryptor = aes::ecb_decryptor(aes::KeySize::KeySize128, key, blockmodes::NoPadding);
+    let mut decryptor = aes::ecb_decryptor(aes::KeySize::KeySize128, key, blockmodes::PkcsPadding);
 
     let mut final_result = Vec::<u8>::new();
     let mut read_buffer = buffer::RefReadBuffer::new(encrypted_data);
@@ -336,7 +336,7 @@ fn crack(cipher_text: &Vec<u8>, dictionary: &Vec<String>) -> Vec<Vec<u8>> {
     // setup the key pool
     let iv = iv_bytes.len() as u8;
     let im = 16 - iv_bytes.len() as u8;
-    let mut kp = KeyPool::new(4, iv, im, 0);
+    let mut kp = KeyPool::new(1, iv, im, 0);
     // ind the iv to the MSB
     kp.static_ms_bytes = iv_bytes;
 
@@ -410,20 +410,23 @@ fn main() {
     let iv = iv_bytes.len() as u8;
     let im = 16 - iv_bytes.len() as u8;
     let mut kp = KeyPool::new(1, iv, im, 0);
+    kp.static_ms_bytes = iv_bytes.clone();
+    rng.fill_bytes(&mut kp.dynamic_bytes);
     let mut counter = 0;
+    let cipher_text = match encrypt(&message.as_bytes(), &kp.to_vec()) {
+        Ok(cp) => cp,
+        Err(_) => {
+            panic!("Could not encrypt for some reason");
+        }
+    };
 
     let start = PreciseTime::now();
-    while !kp.is_done() {
-        if counter % 2^10 == 0 {
-            println!("{:?}, {:?}", kp.to_vec(), kp.is_done());
-        }
-
-        counter += 1;
-        kp = kp.inc();
-    }
+    let potential_keys = crack(&cipher_text, &sorted_dictionary);
     let end = PreciseTime::now();
 
     println!("{} seconds for file {}", start.to(end), file_name);
+    println!("Potential Keys {:?}", potential_keys);
+    println!("Actual Key {:?}", kp.to_vec());
 
 
     // set key bits
