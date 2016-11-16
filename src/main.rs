@@ -76,6 +76,9 @@ fn main() {
 
     // Parse commandline argument
     let file_name = args().nth(1).unwrap();
+    let thread_count: u8 = args().nth(2).unwrap()
+        .parse()
+        .expect("You should have given a number");
 
     // load file given from commandline argument
     let iv_bytes = match read_file_from_arg(Some(file_name.clone())) {
@@ -93,30 +96,30 @@ fn main() {
     // initialize base key
     let iv = iv_bytes.len() as u8;
     let im = 16 - iv_bytes.len() as u8;
-    let mut kp = KeyPool::new(1, iv, im, 0); // for no
-    let mut keys = KeyPool::generate_keys(64, im);
+    let mut kp = KeyPool::new(thread_count as i64, iv, im, 0); // for no
+    // let mut keys = KeyPool::generate_keys(64, im);
 
     kp.static_ms_bytes = iv_bytes.clone();
 
-    for mut key in keys {
-        key.static_ms_bytes = iv_bytes.clone();
-        println!("{}", key);
-    }
+    // for mut key in keys {
+    //     key.static_ms_bytes = iv_bytes.clone();
+        // println!("{}", key);
+    // }
 
-    // rng.fill_bytes(&mut kp.dynamic_bytes);
+    rng.fill_bytes(&mut kp.dynamic_bytes);
 
-    // let cipher_text = match encrypt(&message.as_bytes(), &kp.to_vec()) {
-    //     Ok(cp) => cp,
-    //     Err(e) => {
-    //         panic!("Could not encrypt for some reason: {:?}", e);
-    //     }
-    // };
+    let cipher_text = match encrypt(&message.as_bytes(), &kp.to_vec()) {
+        Ok(cp) => cp,
+        Err(e) => {
+            panic!("Could not encrypt for some reason: {:?}", e);
+        }
+    };
 
-    // let start = PreciseTime::now();
-    // let potential_keys = crack(&cipher_text, &sorted_dictionary);
-    // let end = PreciseTime::now();
+    let start = PreciseTime::now();
+    let potential_keys = crack(&cipher_text, &sorted_dictionary);
+    let end = PreciseTime::now();
     //
-    // println!("{} seconds for file {}", start.to(end), file_name);
-    // println!("Potential Keys {:?}", potential_keys);
-    // println!("Actual Key {:?}", kp.to_vec());
+    println!("{} seconds for file {}", start.to(end), file_name);
+    println!("Potential Keys {:?}", potential_keys);
+    println!("Actual Key {:?}", kp.to_vec());
 }

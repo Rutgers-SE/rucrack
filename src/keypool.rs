@@ -75,7 +75,7 @@ impl KeyPool {
         output
     }
 
-    // only increment the dynamic bytes
+    /// Increments the dynamic bytes to emulate
     pub fn inc(&mut self) -> KeyPool {
         let mut idx = self.dynamic_bytes.len() - 1;
         loop {
