@@ -19,7 +19,7 @@ impl WrappedStep for u8 {
         output
     }
     fn back(self, other: &Self) -> Self {
-        self
+        unimplemented!();
     }
 }
 

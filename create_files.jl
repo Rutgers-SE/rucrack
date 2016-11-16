@@ -1,8 +1,6 @@
 function create_ivfile(n)
     file = open("iv$n.txt", "w")
-    content = rand(UInt8(0):UInt8(255), n)
-    println(content)
-    write(file, content)
+    write(file, rand(UInt8(0):UInt8(255), n))
     close(file)
 end
 

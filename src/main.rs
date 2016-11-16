@@ -20,6 +20,8 @@ use rand::Rng;
 use rand::os::OsRng;
 use std::str::from_utf8;
 use std::env::args;
+use std::fmt;
+
 
 // impl Iterator for KeyPool {
 //     type Item = KeyPool;
@@ -92,21 +94,29 @@ fn main() {
     let iv = iv_bytes.len() as u8;
     let im = 16 - iv_bytes.len() as u8;
     let mut kp = KeyPool::new(1, iv, im, 0); // for no
+    let mut keys = KeyPool::generate_keys(64, im);
+
     kp.static_ms_bytes = iv_bytes.clone();
-    rng.fill_bytes(&mut kp.dynamic_bytes);
 
-    let cipher_text = match encrypt(&message.as_bytes(), &kp.to_vec()) {
-        Ok(cp) => cp,
-        Err(e) => {
-            panic!("Could not encrypt for some reason: {:?}", e);
-        }
-    };
+    for mut key in keys {
+        key.static_ms_bytes = iv_bytes.clone();
+        println!("{}", key);
+    }
 
-    let start = PreciseTime::now();
-    let potential_keys = crack(&cipher_text, &sorted_dictionary);
-    let end = PreciseTime::now();
+    // rng.fill_bytes(&mut kp.dynamic_bytes);
 
-    println!("{} seconds for file {}", start.to(end), file_name);
-    println!("Potential Keys {:?}", potential_keys);
-    println!("Actual Key {:?}", kp.to_vec());
+    // let cipher_text = match encrypt(&message.as_bytes(), &kp.to_vec()) {
+    //     Ok(cp) => cp,
+    //     Err(e) => {
+    //         panic!("Could not encrypt for some reason: {:?}", e);
+    //     }
+    // };
+
+    // let start = PreciseTime::now();
+    // let potential_keys = crack(&cipher_text, &sorted_dictionary);
+    // let end = PreciseTime::now();
+    //
+    // println!("{} seconds for file {}", start.to(end), file_name);
+    // println!("Potential Keys {:?}", potential_keys);
+    // println!("Actual Key {:?}", kp.to_vec());
 }
