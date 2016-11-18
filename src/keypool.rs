@@ -113,3 +113,14 @@ impl fmt::Display for KeyPool {
             self.to_vec())
     }
 }
+
+impl Iterator for KeyPool {
+    type Item = KeyPool;
+    fn next(&mut self) -> Option<Self::Item> {
+        if !self.is_done() {
+            Some(self.inc())
+        } else {
+            None
+        }
+    }
+}

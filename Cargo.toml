@@ -8,3 +8,5 @@ rust-crypto = "^0.2"
 rand = "*"
 # num = "*"
 time = "*"
+rayon = "*"
+uuid = { version = "0.2", features = ["serde", "v4"]}
