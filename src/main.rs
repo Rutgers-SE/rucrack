@@ -33,6 +33,7 @@ use std::marker::Sync;
 use std::thread;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use std::process::Command;
 
 
 #[derive(PartialOrd, PartialEq)]
@@ -41,17 +42,16 @@ unsafe impl Sync for Packet {}
 unsafe impl Send for Packet {}
 
 
-fn dc(cipher_text: &Vec<u8>, key: &KeyPool) -> Vec<Vec<u8>> {
+fn dc(cipher_text: &Vec<u8>, key: &KeyPool, output: &mut Vec<Vec<u8>>) {
     let mut output = vec![];
     let mut key = key.clone();
     while !key.is_done() {
         match decrypt(&cipher_text[..], &key.to_vec()) {
-
             Ok(decrypted_data) => {
                 match from_utf8(&decrypted_data) {
                     Ok(pt) => {
+                        println!("Found Key  {:?}", key.to_vec());
                         if is_english(pt.to_string()) {
-                            println!("{:?}", key.to_vec());
                             output.push(key.to_vec());
                         }
                     }
@@ -62,7 +62,6 @@ fn dc(cipher_text: &Vec<u8>, key: &KeyPool) -> Vec<Vec<u8>> {
         }
         key = key.inc();
     }
-    output
 }
 
 // returns potential keys
@@ -84,18 +83,19 @@ fn crack(cipher_text: &Vec<u8>, dictionary: &Vec<String>, thread_count: i64) -> 
 
     for mut key in keys {
         key.static_ms_bytes = iv_bytes.clone();
-        println!("{:?}", key.to_vec());
+        // println!("{:?}", key.to_vec());
         let output = output.clone();
         let cipher_text = cipher_text.clone();
+        println!("Spawning thread");
         threads.push(thread::spawn(move || {
             let mut output = output.lock().unwrap();
-            output.append(&mut dc(&cipher_text, &key));
+            dc(&cipher_text, &key, &mut output);
         }));
     }
 
-    // for t in threads {
-    //     t.join();
-    // }
+    for t in threads {
+        t.join();
+    }
 
     output
 }
@@ -144,4 +144,10 @@ fn main() {
     println!("Potential Keys {:?}", potential_keys);
     println!("Actual Key {:?}", kp.to_vec());
 
+    let output = Command::new("notify-send")
+        .arg("Crack Complete")
+        .output()
+        .expect("You do not have the notify-send command");
+
+    let hello = output.stdout;
 }

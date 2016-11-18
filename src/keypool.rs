@@ -87,7 +87,7 @@ impl KeyPool {
             let tmp = self.dynamic_bytes[idx];
             self.dynamic_bytes[idx] = self.dynamic_bytes[idx].inc();
             let progress = tmp > self.dynamic_bytes[idx];
-            if progress {
+            if progress && idx != 0 {
                 idx -= 1;
             } else {
                 break;
