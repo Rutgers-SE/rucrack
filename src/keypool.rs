@@ -14,7 +14,7 @@ pub struct KeyPool {
 impl KeyPool {
     pub fn new(parition_count: i64, ms_bytes: u8, dy_bytes: u8, ls_bytes: u8) -> KeyPool {
         let cap = 256 / parition_count;
-        println!("{} {}", cap, parition_count);
+        // println!("{} {}", cap, parition_count);
         KeyPool {
             dynamic_ms_cap: (cap as u8).dec(),
             parition_count: parition_count as u8,
@@ -33,7 +33,7 @@ impl KeyPool {
 
         for key_id in 0..parition_count {
             let mut db = u8_vector(dynamic_byte_len);
-            println!("Cursor: {}", cursor);
+            // println!("Cursor: {}", cursor);
             db[0] = cursor;
             output.push(KeyPool {
                 dynamic_ms_cap: cap.clone(),
@@ -49,10 +49,23 @@ impl KeyPool {
         output
     }
 
+    pub fn is_cap_reached(&self) -> bool {
+        self.dynamic_bytes[0] == self.dynamic_ms_cap
+    }
+
     pub fn is_done(&self) -> bool {
         let mut done = true;
+        if self.parition_count != 1 {
+            if !self.is_cap_reached() {
+                done = false;
+            }
+        } else {
+            if self.dynamic_bytes[0] != 255 {
+                done = false;
+            }
+        }
         for idx in 1..self.dynamic_bytes.len() {
-            if self.dynamic_bytes[idx] != 255 || self.dynamic_bytes[0] != self.dynamic_ms_cap {
+            if self.dynamic_bytes[idx] != 255  {
                 done = false;
                 break;
             }

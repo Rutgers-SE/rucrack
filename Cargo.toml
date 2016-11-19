@@ -9,7 +9,5 @@ authors = ["alexander sanchez <asanchez.dev@gmail.com>"]
 [dependencies]
 rust-crypto = "^0.2"
 rand = "*"
-# num = "*"
 time = "*"
-rayon = "*"
-uuid = { version = "0.2", features = ["serde", "v4"]}
+hyper = "0.9"
