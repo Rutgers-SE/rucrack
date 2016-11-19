@@ -4,7 +4,7 @@ use std::fmt;
 
 #[derive(Debug, Clone)]
 pub struct KeyPool {
-    dynamic_ms_cap: u8,
+    pub dynamic_ms_cap: u8,
     pub parition_count: u8,
     pub static_ms_bytes: Vec<u8>,
     pub dynamic_bytes: Vec<u8>,

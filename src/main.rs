@@ -42,15 +42,16 @@ unsafe impl Sync for Packet {}
 unsafe impl Send for Packet {}
 
 
-fn dc(cipher_text: &Vec<u8>, key: &KeyPool, output: &mut Vec<Vec<u8>>) {
+fn dc(cipher_text: &Vec<u8>, key: &KeyPool, output: &mut Vec<Vec<u8>>, thread_count: i64) {
     let mut output = vec![];
     let mut key = key.clone();
     while !key.is_done() {
+        // println!("Thread ID: {}, key {:?}", thread_count, key.to_vec());
         match decrypt(&cipher_text[..], &key.to_vec()) {
             Ok(decrypted_data) => {
                 match from_utf8(&decrypted_data) {
                     Ok(pt) => {
-                        println!("Found Key  {:?}", key.to_vec());
+                        println!("thread {}: Found Key  {:?}", thread_count, key.to_vec());
                         if is_english(pt.to_string()) {
                             output.push(key.to_vec());
                         }
@@ -76,21 +77,23 @@ fn crack(cipher_text: &Vec<u8>, dictionary: &Vec<String>, thread_count: i64) -> 
     // setup the key pool
     let iv = iv_bytes.len() as u8;
     let im = 16 - iv_bytes.len() as u8;
-    let mut keys = KeyPool::generate_keys(thread_count, im); // TODO: change the `1` to a variable
+    let keys = KeyPool::generate_keys(thread_count, im); // TODO: change the `1` to a variable
 
 
     let mut threads = vec![]; // thread pool
+    let mut thread_count = 0;
 
     for mut key in keys {
         key.static_ms_bytes = iv_bytes.clone();
-        // println!("{:?}", key.to_vec());
         let output = output.clone();
         let cipher_text = cipher_text.clone();
-        println!("Spawning thread");
+        println!("Starting with key {:?} and DMS Cap {}", key.to_vec(), key.dynamic_ms_cap);
         threads.push(thread::spawn(move || {
             let mut output = output.lock().unwrap();
-            dc(&cipher_text, &key, &mut output);
+            dc(&cipher_text, &key, &mut output, thread_count.clone());
         }));
+
+        thread_count = thread_count + 1;
     }
 
     for t in threads {
