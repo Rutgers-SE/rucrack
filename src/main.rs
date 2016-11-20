@@ -164,6 +164,9 @@ fn main() {
     let cipher_text = encrypt(&message.as_bytes(), &kp.to_vec())
         .expect("Could not encrypt for some reason");
 
+    println!("{}", message);
+    println!("{:?}", cipher_text);
+
     let start = PreciseTime::now();
     let potential_keys = crack(&cipher_text, &sorted_dictionary, thread_count);
     let end = PreciseTime::now();
