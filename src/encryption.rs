@@ -1,6 +1,7 @@
 
 use crypto::{symmetriccipher, buffer, aes, blockmodes};
 use crypto::buffer::{ReadBuffer, WriteBuffer, BufferResult};
+use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary};
 
 
 // Encrypt a buffer with the given key and iv using

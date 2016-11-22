@@ -1,8 +1,11 @@
 use util::{u8_vector};
 use overflow::{WrappedStep, WrappedInc};
 use std::fmt;
+use rustc_serialize::json::{self, Json, ToJson};
+use std::collections::BTreeMap;
 
-#[derive(Debug, Clone)]
+
+#[derive(Debug, Clone, RustcDecodable)]
 pub struct KeyPool {
     pub dynamic_ms_cap: u8,
     pub parition_count: u8,
@@ -22,6 +25,32 @@ impl KeyPool {
             dynamic_bytes: u8_vector(dy_bytes),
             static_ls_bytes: u8_vector(ls_bytes),
         }
+    }
+
+    pub fn split_key(&self, parition_count: i64) -> Vec<KeyPool> {
+        let mut output = vec![];
+        let kp: KeyPool = self.clone();
+        let step = ((kp.dynamic_ms_cap as i64 + 1) / parition_count) as u8;
+        let mut cap = step as u8;
+        let mut cursor = kp.dynamic_bytes[0];
+
+        for key_id in 0..parition_count {
+            let mut db = u8_vector(kp.dynamic_bytes.len() as u8);
+            db[0] = cursor;
+
+            output.push(KeyPool {
+                dynamic_ms_cap: cap.clone(),
+                parition_count: parition_count as u8,
+                static_ms_bytes: kp.static_ms_bytes.clone(),
+                dynamic_bytes: db,
+                static_ls_bytes: kp.static_ls_bytes.clone()
+            });
+
+            cursor = cursor.step(&(step as u8));
+            cap = cap.step(&(step as u8));
+        }
+
+        output
     }
 
     // returns a vector of keys containing the amount specified by the `parition_count`
@@ -135,5 +164,18 @@ impl Iterator for KeyPool {
         } else {
             None
         }
+    }
+}
+
+impl ToJson for KeyPool {
+    fn to_json(&self) -> Json {
+        let mut d = BTreeMap::new();
+        d.insert("dynamic_ms_cap".to_string(), self.dynamic_ms_cap.to_json());
+        d.insert("parition_count".to_string(), self.parition_count.to_json());
+        d.insert("static_ms_bytes".to_string(), self.static_ms_bytes.to_json());
+        d.insert("dynamic_bytes".to_string(), self.dynamic_bytes.to_json());
+        d.insert("static_ls_bytes".to_string(), self.static_ls_bytes.to_json());
+
+        Json::Object(d)
     }
 }
