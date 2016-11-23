@@ -8,6 +8,7 @@ use iron::{BeforeMiddleware, AfterMiddleware, typemap};
 use time::precise_time_ns;
 
 use keypool::KeyPool;
+
 use std::thread;
 use std::fmt;
 use std::net::{ToSocketAddrs, SocketAddr};
@@ -16,8 +17,11 @@ use std::sync::mpsc::channel;
 use std::sync::mpsc as mp;
 
 use crack::crack;
+use hyper::client as cl;
+
 
 use util::{load_linux_dictionary};
+use rustc_serialize::json::{Json, ToJson};
 
 #[derive(Clone, Debug)]
 pub struct Worker {
@@ -64,16 +68,15 @@ impl Worker {
         self.clone()
     }
 
-    pub fn crack_keypool(cipher_text: &Vec<u8>, kp: KeyPool) {
-        let dict = load_linux_dictionary().unwrap();
-        let pkeys = crack(&cipher_text, &dict, 4);
+    pub fn crack_keypool(&self, cipher_text: Vec<u8>, kp: KeyPool) {
+        // let dict = load_linux_dictionary().unwrap();
+        let pkeys = crack(kp, cipher_text, self.available_threads).to_json();
     }
 
-    pub fn send_keypool() {
-        unimplemented!()
-    }
-
-    pub fn send_potential_keys() {
+    pub fn send_potential_keys(&self, potential_keys: Vec<u8>) {
+        let pks = potential_keys.to_json().to_string();
+        let client = cl::Client::new();
+        let res = client.get("http://google.com").send().unwrap();
     }
 
     pub fn listen(&mut self) -> thread::JoinHandle<()> {

@@ -9,16 +9,15 @@ use std::str::{from_utf8};
 
 
 
-fn dc(cipher_text: &Vec<u8>, key: &KeyPool, sender: &Sender<Vec<u8>>, thread_count: i64) {
+fn dc(cipher_text: &Vec<u8>, key: &KeyPool, sender: &Sender<Vec<u8>>) {
     // let mut output = vec![];
     let mut key = key.clone();
     loop {
-        // println!("Thread ID: {}, key {:?}", thread_count, key.to_vec());
         match decrypt(&cipher_text[..], &key.to_vec()) {
             Ok(decrypted_data) => {
                 match from_utf8(&decrypted_data) {
                     Ok(pt) => {
-                        println!("thread {}: Found Key  {:?}", thread_count, key.to_vec());
+                        println!("Found Key  {:?}", key.to_vec());
                         if is_english(pt.to_string()) {
                             // output.push(key.to_vec());
                             sender.send(key.to_vec());
@@ -39,35 +38,22 @@ fn dc(cipher_text: &Vec<u8>, key: &KeyPool, sender: &Sender<Vec<u8>>, thread_cou
 }
 
 // returns potential keys
-pub fn crack(cipher_text: &Vec<u8>, dictionary: &Vec<String>, thread_count: i64) -> Vec<Vec<u8>> {
-    let (tx, rx) = channel();
-
-    // load the iv file
-    let iv_bytes = read_file_from_arg(args().nth(1))
-        .expect("Need to provide the IV file");
-
-    // setup the key pool
-    let iv = iv_bytes.len() as u8;
-    let im = 16 - iv_bytes.len() as u8;
-    let keys = KeyPool::generate_keys(thread_count, im); // TODO: change the `1` to a variable
+pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8>> {
+    let keys = kp.split_key(thread_count);
 
     let mut threads = vec![]; // thread pool
-    let mut thread_count = 0;
 
+    // com. channel
+    let (tx, rx) = channel();
     for mut key in keys {
-        key.static_ms_bytes = iv_bytes.clone();
 
         // Cloning to make it thread safe
         let tx = tx.clone();
         let cipher_text = cipher_text.clone();
 
-        // println!("Starting with key {:?} and DMS Cap {}", key.to_vec(), key.dynamic_ms_cap);
-
         threads.push(thread::spawn(move || {
-            dc(&cipher_text, &key, &tx, thread_count.clone());
+            dc(&cipher_text, &key, &tx);
         }));
-
-        thread_count = thread_count + 1;
     }
 
     for t in threads {
@@ -77,8 +63,7 @@ pub fn crack(cipher_text: &Vec<u8>, dictionary: &Vec<String>, thread_count: i64)
 
     let mut output = vec![];
 
-    'recieve: loop {
-        // println!("Here");
+    loop {
         match rx.recv() {
             Ok(vector) => {
                 if vector.len() == 1 {

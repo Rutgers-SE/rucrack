@@ -179,3 +179,34 @@ impl ToJson for KeyPool {
         Json::Object(d)
     }
 }
+
+#[test]
+fn test_generate_keys() {
+    let keys = KeyPool::generate_keys(2, 2 as u8);
+
+    assert!(keys.len() == 2);
+
+    assert!(keys[0].dynamic_bytes[0] == 0);
+    assert!(keys[0].dynamic_ms_cap == 128);
+    assert!(keys[1].dynamic_bytes[0] == 128);
+    assert!(keys[1].dynamic_ms_cap == 0);
+}
+
+#[test]
+fn test_split_key() {
+    let mut key = KeyPool::new(1, 14, 2, 0);
+    let mut keys = key.split_key(2);
+
+    assert!(keys[0].dynamic_bytes[0] == 0);
+    assert!(keys[0].dynamic_ms_cap == 128);
+    assert!(keys[1].dynamic_bytes[0] == 128);
+    assert!(keys[1].dynamic_ms_cap == 0);
+
+    key = keys[0].clone();
+    keys = key.split_key(2);
+
+    assert!(keys[0].dynamic_bytes[0] == 0);
+    assert!(keys[0].dynamic_ms_cap == 64);
+    assert!(keys[1].dynamic_bytes[0] == 64);
+    assert!(keys[1].dynamic_ms_cap == 128);
+}
