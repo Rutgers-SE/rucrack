@@ -34,7 +34,7 @@ use crack::crack;
 
 // standar packages
 use std::collections::HashMap;
-use std::str::from_utf8;
+use std::str::{from_utf8, FromStr};
 use std::env::args;
 use std::sync::mpsc::{Sender, channel};
 use std::marker::Sync;
@@ -43,20 +43,62 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::process::Command;
 use std::io::stdin;
+use std::io::stdout;
 use std::io::prelude::*;
-use std::net::SocketAddr;
+use std::net::{SocketAddrV4, TcpStream, UdpSocket, TcpListener, Ipv4Addr};
+use std::net::ToSocketAddrs;
 
+enum Op {
+    SendKey,
+    SetupSlave(String),
+    Err
+}
+
+fn parse (value: &'static str) -> Op {
+    if value == "send" {
+        Op::SendKey
+    } else {
+        Op::Err
+    }
+}
 
 fn master_repl() {
-    println!("Welcome!");
-    let reader = stdin();
+    print!("master-ip and port> ");
+    stdout().flush();
 
-    print!("> ");
-    for line in reader.lock().lines() {
-        // parse command
-        println!("--> {}", line.unwrap());
+    let mut raw_ip = String::new();
+    stdin().read_line(&mut raw_ip).expect("Expected valid string");
+    let tokens = raw_ip.split(":").collect::<Vec<&str>>();
 
+    assert!(tokens.len() == 2);
+
+    let ip = match Ipv4Addr::from_str(tokens[0].trim()) {
+        Ok(value) => value,
+        Err(e) => panic!("{}", e)
+    };
+
+    let port = u64::from_str(tokens[1]);
+
+    let w = Worker::builder(4, ip.clone().to_string().as_str());
+
+
+    let mut input = String::new();
+    loop {
         print!("> ");
+        stdout().flush();
+        stdin().read_line(&mut input).expect("You did not enter a valid string");
+        let splits = input.split(" ");
+        let tokens = splits.collect::<Vec<&str>>();
+
+        println!("{}", input);
+
+        // match parse(tokens[0]) {
+        //     Op::SendKey => {
+        //         1;
+        //     }
+        //     _ => ()
+        // }
+
     }
 }
 
