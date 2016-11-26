@@ -1,4 +1,4 @@
-use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary};
+use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary, split};
 use keypool::KeyPool;
 use encryption::{encrypt, decrypt};
 
@@ -15,19 +15,30 @@ fn dc(cipher_text: &Vec<u8>, key: &KeyPool, sender: &Sender<Vec<u8>>) {
     loop {
         match decrypt(&cipher_text[..], &key.to_vec()) {
             Ok(decrypted_data) => {
+                // println!("{:?}", decrypted_data);
+                let mut dd = decrypted_data.clone();
+                for d in dd {
+                    let (c1, c2) = split(d);
+                    print!("{}{}", c1, c2);
+                }
+                println!("");
                 match from_utf8(&decrypted_data) {
                     Ok(pt) => {
-                        println!("Found Key  {:?}", key.to_vec());
+                        // println!("Found Key  {:?}", key.to_vec());
                         if is_english(pt.to_string()) {
-                            // output.push(key.to_vec());
                             sender.send(key.to_vec());
-                            break; // NOTE: I'm not sure if i wanter to break here
                         }
                     }
-                    Err(_) => (),
+                    Err(e) => {
+                        // println!("Error Reading to utf8 -- {:?} {:?}", e, decrypted_data);
+                        ()
+                    }
                 }
             }
-            Err(_) => (),
+            Err(e) => {
+                println!("Error decrypting {:?}", e);
+                ()
+            }
         }
         // println!("{:?}", key);
         key = key.inc();

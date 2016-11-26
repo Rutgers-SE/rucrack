@@ -14,7 +14,8 @@ pub fn encrypt(data: &[u8], key: &[u8]) -> Result<Vec<u8>, symmetriccipher::Symm
     //     aes::cbc_encryptor(aes::KeySize::KeySize256, key, iv, blockmodes::PkcsPadding);
 
     // For the project we will use ecb
-    let mut encryptor = aes::ecb_encryptor(aes::KeySize::KeySize128, key, blockmodes::PkcsPadding);
+    let mut encryptor = aes::ecb_encryptor(aes::KeySize::KeySize128, key, blockmodes::NoPadding);
+    // PkcsPadding
 
     // Each encryption operation encrypts some data from
     // an input buffer into an output buffer. Those buffers
@@ -77,7 +78,7 @@ pub fn decrypt(encrypted_data: &[u8],
     // let mut decryptor =
     //     aes::cbc_decryptor(aes::KeySize::KeySize256, key, iv, blockmodes::PkcsPadding);
     // No padding may be incorrect
-    let mut decryptor = aes::ecb_decryptor(aes::KeySize::KeySize128, key, blockmodes::PkcsPadding);
+    let mut decryptor = aes::ecb_decryptor(aes::KeySize::KeySize128, key, blockmodes::NoPadding);
 
     let mut final_result = Vec::<u8>::new();
     let mut read_buffer = buffer::RefReadBuffer::new(encrypted_data);

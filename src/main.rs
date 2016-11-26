@@ -35,7 +35,7 @@ use bodyparser::{Raw, Json as J};
 
 // project packages
 use encryption::{encrypt, decrypt};
-use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary, prompt, read_r4c_file};
+use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary, prompt, read_r4c_file, split};
 use overflow::{WrappedStep, WrappedInc};
 use keypool::{KeyPool};
 use node::{Worker};
@@ -108,12 +108,15 @@ fn parse (value: Vec<String>) -> Result<Op, String> {
 }
 
 fn master_repl() {
-    prompt("master-ip and port> ");
+    // prompt("master-ip and port> ");
+    //
+    // let mut raw_ip = String::new();
+    // stdin().read_line(&mut raw_ip).expect("Expected valid string");
+    let raw = args().nth(2).unwrap();
+    let mut base = "http://127.0.0.1:".to_string();
+    base.push_str(raw.as_str());
 
-    let mut raw_ip = String::new();
-    stdin().read_line(&mut raw_ip).expect("Expected valid string");
-
-    let ip = match Url::from_str(raw_ip.trim()) {
+    let ip = match Url::from_str(&base.as_str()) {
         Ok(value) => value,
         Err(e) => panic!("{}", e)
     };
@@ -149,10 +152,10 @@ fn master_repl() {
                     println!("{:?}", socket_set);
                 }
                 Op::IvFile(f_name) => {
-                    iv_bytes = read_file_from_arg(Some(f_name));
+                    iv_bytes = read_r4c_file(f_name);
                 }
                 Op::CipherFile(f_name) => {
-                    cipher_text = read_file_from_arg(Some(f_name));
+                    cipher_text = read_r4c_file(f_name);
                 }
                 Op::Start => {
                     use hyper::client::{Client};
@@ -166,7 +169,7 @@ fn master_repl() {
                     let keys = kp.split_key((4*sslen) as i64); // NOTE: 16 will be replaced with the ip's
 
                     crossbeam::scope(|scope| {
-                        scope.defer(|| println!("Hopefull threads are done before and things"));
+                        scope.defer(|| println!("All computers done"));
                         for idx in 0..ss.len() {
                             let keys = keys.clone();
                             let ss = ss.clone();
@@ -190,9 +193,9 @@ fn master_repl() {
 
 
                                 // let final = msg.as_str();
-                                println!("{:?}", msg);
+                                // println!("{:?}", msg);
 
-                                println!("Speaking to {}", url);
+                                // println!("Speaking to {}", url);
                                 client.post(url)
                                     .send();
                             });
@@ -271,17 +274,17 @@ fn slave_repl() {
 }
 
 fn main() {
-    // let role = args().nth(1)
-    //     .expect("Role");
-    //
-    // if "master".to_string() == role {
-    //     master_repl();
-    // } else if "slave".to_string() == role {
-    //     slave_repl();
-    // }
+    let role = args().nth(1)
+        .expect("Role");
 
-    let iv = read_r4c_file("IVfile1.txt".to_string());
-    println!("{:?}", iv);
+    if "master".to_string() == role {
+        master_repl();
+    } else if "slave".to_string() == role {
+        slave_repl();
+    }
+
+    // let iv = read_r4c_file("IVfile1.txt".to_string());
+    // println!("{:?}", iv);
 
     // let client = cl::Client::new();
     // let mut res: cl::Response = client.get("https://reddit.com").send().unwrap();
