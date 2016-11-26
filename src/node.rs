@@ -18,6 +18,7 @@ use std::sync::mpsc as mp;
 
 use crack::crack;
 use hyper::client as cl;
+use hyper::Url;
 
 
 use util::{load_linux_dictionary};
@@ -26,9 +27,9 @@ use rustc_serialize::json::{Json, ToJson};
 #[derive(Clone, Debug)]
 pub struct Worker {
     available_threads: i64,
-    ip_address: SocketAddr,
-    master: Option<SocketAddr>,
-    slaves: Option<Vec<SocketAddr>>
+    ip_address: Url,
+    master: Option<Url>,
+    slaves: Option<Vec<Url>>
 }
 
 impl fmt::Display for Worker {
@@ -38,12 +39,10 @@ impl fmt::Display for Worker {
 }
 
 impl Worker {
-    pub fn builder(av: i64, ip: &'static str) -> Worker {
-        let addr: SocketAddr = ip.to_string().parse()
-            .expect("ip should be a valid socket addr");
+    pub fn builder(av: i64, ip: Url) -> Worker {
         Worker {
             available_threads: av,
-            ip_address: addr,
+            ip_address: ip,
             master: None,
             slaves: None
         }
@@ -54,15 +53,15 @@ impl Worker {
         self.clone()
     }
 
-    pub fn set_slaves(&mut self, slaves: Vec<Worker>) -> Worker {
-        self.slaves = Some(
-            slaves.clone()
-                .iter()
-                .map(|ref slave| slave.ip_address)
-                .collect::<Vec<SocketAddr>>()
-            );
-        self.clone()
-    }
+    // pub fn set_slaves(&mut self, slaves: Vec<Worker>) -> Worker {
+    //     self.slaves = Some(
+    //         slaves.clone()
+    //             .iter()
+    //             .map(|ref slave| slave.ip_address)
+    //             .collect::<Vec<Url>>()
+    //         );
+    //     self.clone()
+    // }
 
     pub fn done(&mut self) -> Worker {
         self.clone()

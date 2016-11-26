@@ -2,6 +2,11 @@ use std::fs::File;
 use std::env::args;
 use std::io::prelude::*;
 use std::path::Path;
+use std::io::stdout;
+
+// impl IntoUrl for SocketAddr {
+//
+// }
 
 // for now this only will work with kde neon
 pub fn load_linux_dictionary() -> Option<Vec<String>> {
@@ -56,4 +61,9 @@ pub fn read_file_from_arg(arg: Option<String>) -> Option<Vec<u8>> {
 // maybe different for mac's and pc's
 pub fn is_english(plain_text: String) -> bool {
     true
+}
+
+pub fn prompt(s: &str) {
+    print!("{}", s);
+    stdout().flush();
 }

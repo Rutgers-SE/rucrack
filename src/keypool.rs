@@ -15,12 +15,12 @@ pub struct KeyPool {
 }
 
 impl KeyPool {
-    pub fn new(parition_count: i64, ms_bytes: u8, dy_bytes: u8, ls_bytes: u8) -> KeyPool {
-        let cap = 256 / parition_count;
+    pub fn new(ms_bytes: u8, dy_bytes: u8, ls_bytes: u8) -> KeyPool {
+        // let cap = 256 / parition_count;
         // println!("{} {}", cap, parition_count);
         KeyPool {
-            dynamic_ms_cap: (cap as u8).dec(),
-            parition_count: parition_count as u8,
+            dynamic_ms_cap: 0, // meaning the value will eventuall wrap around
+            parition_count: 1,
             static_ms_bytes: u8_vector(ms_bytes),
             dynamic_bytes: u8_vector(dy_bytes),
             static_ls_bytes: u8_vector(ls_bytes),
@@ -28,15 +28,23 @@ impl KeyPool {
     }
 
     pub fn split_key(&self, parition_count: i64) -> Vec<KeyPool> {
+        if parition_count <= 0 {
+            return vec![self.clone()];
+        }
         let mut output = vec![];
         let kp: KeyPool = self.clone();
-        let step = ((kp.dynamic_ms_cap as i64 + 1) / parition_count) as u8;
+        let step = if kp.dynamic_ms_cap == 0 {
+            ((256) / parition_count) as u8
+        } else {
+            ((kp.dynamic_ms_cap as i64 + 1) / parition_count) as u8
+        };
         let mut cap = step as u8;
         let mut cursor = kp.dynamic_bytes[0];
 
         for key_id in 0..parition_count {
             let mut db = u8_vector(kp.dynamic_bytes.len() as u8);
             db[0] = cursor;
+            // println!("{:?}, {:?}", cap, cursor);
 
             output.push(KeyPool {
                 dynamic_ms_cap: cap.clone(),
@@ -48,6 +56,7 @@ impl KeyPool {
 
             cursor = cursor.step(&(step as u8));
             cap = cap.step(&(step as u8));
+            // println!("{:?}, {:?}, {:?}", cap, cursor, step);
         }
 
         output
