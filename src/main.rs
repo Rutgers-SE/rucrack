@@ -35,7 +35,7 @@ use bodyparser::{Raw, Json as J};
 
 // project packages
 use encryption::{encrypt, decrypt};
-use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary, prompt};
+use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary, prompt, read_r4c_file};
 use overflow::{WrappedStep, WrappedInc};
 use keypool::{KeyPool};
 use node::{Worker};
@@ -271,14 +271,17 @@ fn slave_repl() {
 }
 
 fn main() {
-    let role = args().nth(1)
-        .expect("Role");
+    // let role = args().nth(1)
+    //     .expect("Role");
+    //
+    // if "master".to_string() == role {
+    //     master_repl();
+    // } else if "slave".to_string() == role {
+    //     slave_repl();
+    // }
 
-    if "master".to_string() == role {
-        master_repl();
-    } else if "slave".to_string() == role {
-        slave_repl();
-    }
+    let iv = read_r4c_file("IVfile1.txt".to_string());
+    println!("{:?}", iv);
 
     // let client = cl::Client::new();
     // let mut res: cl::Response = client.get("https://reddit.com").send().unwrap();

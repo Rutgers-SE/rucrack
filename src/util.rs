@@ -3,6 +3,8 @@ use std::env::args;
 use std::io::prelude::*;
 use std::path::Path;
 use std::io::stdout;
+use std::u8;
+use std::string::ToString;
 
 // impl IntoUrl for SocketAddr {
 //
@@ -37,6 +39,31 @@ pub fn u8_vector(amount: u8) -> Vec<u8> {
     v
 }
 
+pub fn read_r4c_file(arg: String) -> Option<Vec<u8>> {
+    let mut output: Vec<u8> = vec![];
+    let mut file = File::open(arg).unwrap();
+    let mut buf = String::new();
+    file.read_to_string(&mut buf);
+
+    let mut count = 0;
+    let mut tmp = 0;
+
+    for ch in buf.chars() {
+        let s = ch.to_string();
+        let u4 = u8::from_str_radix(&s, 16).unwrap();
+        if count % 2 == 0 {
+            // output.push(u4);
+            tmp = u4 << 4;
+        } else {
+            let back = tmp | u4;
+            output.push(back);
+        }
+        count = count + 1;
+    }
+
+
+    Some(output)
+}
 
 pub fn read_file_from_arg(arg: Option<String>) -> Option<Vec<u8>> {
     match arg {
