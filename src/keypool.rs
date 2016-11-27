@@ -1,4 +1,4 @@
-use util::{u8_vector};
+use util::u8_vector;
 use overflow::{WrappedStep, WrappedInc};
 use std::fmt;
 use rustc_serialize::json::{Json, ToJson};
@@ -51,7 +51,7 @@ impl KeyPool {
                 parition_count: parition_count as u8,
                 static_ms_bytes: kp.static_ms_bytes.clone(),
                 dynamic_bytes: db,
-                static_ls_bytes: kp.static_ls_bytes.clone()
+                static_ls_bytes: kp.static_ls_bytes.clone(),
             });
 
             cursor = cursor.step(&(step as u8));
@@ -78,7 +78,7 @@ impl KeyPool {
             }
         }
         for idx in 1..self.dynamic_bytes.len() {
-            if self.dynamic_bytes[idx] != 255  {
+            if self.dynamic_bytes[idx] != 255 {
                 done = false;
                 break;
             }
@@ -133,10 +133,11 @@ impl KeyPool {
 
 impl fmt::Display for KeyPool {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({},{}:{:?})",
-            self.dynamic_ms_cap,
-            self.parition_count,
-            self.to_vec())
+        write!(f,
+               "({},{}:{:?})",
+               self.dynamic_ms_cap,
+               self.parition_count,
+               self.to_vec())
     }
 }
 
@@ -156,9 +157,11 @@ impl ToJson for KeyPool {
         let mut d = BTreeMap::new();
         d.insert("dynamic_ms_cap".to_string(), self.dynamic_ms_cap.to_json());
         d.insert("parition_count".to_string(), self.parition_count.to_json());
-        d.insert("static_ms_bytes".to_string(), self.static_ms_bytes.to_json());
+        d.insert("static_ms_bytes".to_string(),
+                 self.static_ms_bytes.to_json());
         d.insert("dynamic_bytes".to_string(), self.dynamic_bytes.to_json());
-        d.insert("static_ls_bytes".to_string(), self.static_ls_bytes.to_json());
+        d.insert("static_ls_bytes".to_string(),
+                 self.static_ls_bytes.to_json());
 
         Json::Object(d)
     }

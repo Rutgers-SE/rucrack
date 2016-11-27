@@ -7,7 +7,7 @@ pub struct Worker {
     available_threads: i64,
     ip_address: Url,
     master: Option<Url>,
-    slaves: Option<Vec<Url>>
+    slaves: Option<Vec<Url>>,
 }
 
 impl fmt::Display for Worker {
@@ -22,7 +22,7 @@ impl Worker {
             available_threads: av,
             ip_address: ip,
             master: None,
-            slaves: None
+            slaves: None,
         }
     }
 }

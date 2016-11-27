@@ -26,7 +26,7 @@ pub fn read_r4c_file(arg: String) -> Option<Vec<u8>> {
             println!("{}", c);
             buf.push(c);
         }
-        _ => ()
+        _ => (),
     }
 
     let mut count = 0;
@@ -36,9 +36,7 @@ pub fn read_r4c_file(arg: String) -> Option<Vec<u8>> {
         let s = ch.to_string();
         let u4 = match u8::from_str_radix(&s, 16) {
             Ok(e) => e,
-            Err(e) => {
-                panic!("I paniced with {:?} -- {:?}", s, e)
-            }
+            Err(e) => panic!("I paniced with {:?} -- {:?}", s, e),
         };
         if count % 2 == 0 {
             // output.push(u4);
@@ -73,7 +71,8 @@ pub fn read_file_from_arg(arg: Option<String>) -> Option<Vec<u8>> {
     }
 }
 
-// NOTE: it appears that we do not need this method because of how rust implements strings. (AWESOME)
+// NOTE: it appears that we do not need this
+// method because of how rust impls strings(AWESOME)
 pub fn is_english(_: String) -> bool {
     true
 }

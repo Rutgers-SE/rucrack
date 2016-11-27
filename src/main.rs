@@ -7,7 +7,8 @@ extern crate params;
 extern crate bodyparser;
 extern crate rustc_serialize;
 extern crate crossbeam;
-// extern crate unicode;
+// extern crate libc;
+// extern crate celix;
 
 mod encryption;
 mod util;
@@ -18,7 +19,7 @@ mod crack;
 
 // external packages
 use time::PreciseTime;
-use hyper::{Url};
+use hyper::Url;
 use iron::prelude::*;
 use iron as i;
 use params::Params;
@@ -31,8 +32,8 @@ use rustc_serialize::json::{self, Json, ToJson};
 use crack::crack;
 
 // standar packages
-use std::str::{FromStr};
-use std::io::{stdin};
+use std::str::FromStr;
+use std::io::stdin;
 use std::collections::HashSet;
 use std::env::args;
 
@@ -124,6 +125,8 @@ fn master_repl() {
                     Op::Start => {
                         use hyper::client::Client;
                         let bytes = ivb.unwrap_or(vec![]);
+                        // let (tx_plain, rx_plain) = channel();
+                        // let (tx_key, rx_key) = channel();
 
                         // Setting up the key
                         let mut kp = KeyPool::new(bytes.len() as u8, (16 - bytes.len()) as u8, 0);
@@ -132,7 +135,7 @@ fn master_repl() {
                         let keys = kp.split_key(ss.len() as i64);
 
                         crossbeam::scope(|scope| {
-                            scope.defer(|| println!("All computers done"));
+                            scope.defer(|| println!("All slaves done! (YAY)"));
                             for idx in 0..ss.len() {
                                 let keys = keys.clone();
                                 let ss = ss.clone();
@@ -154,15 +157,10 @@ fn master_repl() {
 
                                     url.set_query(Some(msg.as_str()));
 
-
-                                    // let final = msg.as_str();
-                                    // println!("{:?}", msg);
-
-                                    let _resp = client.post(url)
-                                        .send()
-                                        .unwrap();
-
-                                    // println!("{:?}", resp);
+                                    match client.post(url).send() {
+                                        Ok(_) => (),
+                                        Err(_) => (),
+                                    }
                                 });
                             }
                         });
@@ -199,7 +197,7 @@ fn slave_repl() {
                                 println!("Finished Crack");
                                 println!("number of potential keys {:?}", keys.len());
                                 println!("potential keys {:?}", keys);
-                                println!("Time taken {}\n\n\n", start.to(end));
+                                println!("Time taken {}\n", start.to(end));
 
                                 let keys_json = json::encode(&keys).unwrap();
                                 return Ok(iron::Response::with((iron::status::Ok,
@@ -219,16 +217,19 @@ fn slave_repl() {
 
         Ok(iron::Response::with((iron::status::Ok, "Hello, From Iron")))
     }
-    let mut base: String = "127.0.0.1:".to_owned();
-    match args().nth(2) {
-        Some(port) => {
-            base.push_str(port.as_str());
-        }
-        None => {
-            let port: &str = "4567";
-            base.push_str(port);
-        }
-    }
+    // let mut base: String = "192.168.1.245:".to_owned();
+    let base = match args().nth(2) {
+        Some(port) => port,
+        None => panic!("You must supply the IP and port combo"),
+        // Some(port) => {
+        // base.push_str(port.as_str());
+        // }
+        // None => {
+        // let port: &str = "4567";
+        // base.push_str(port);
+        // panic
+        // }
+    };
 
     let chain = i::Chain::new(handle);
     match i::Iron::new(chain).http(base.as_str()) {
