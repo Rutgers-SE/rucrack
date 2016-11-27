@@ -3,6 +3,12 @@ info security project 1
 
 ## Instructions
 
+CLONE & CD INTO REPO!!
+
+```bash
+$ git clone https://github.com/Rutgers-SE/rucrack && cd rucrack
+```
+
 There are two arguments that you can pass to the Command, master and slave. Both versions require the user to pass in the hosts IP address.
 
 To run the master:
