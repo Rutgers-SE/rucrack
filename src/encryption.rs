@@ -24,7 +24,7 @@ pub fn encrypt(data: &[u8], key: &[u8]) -> Result<Vec<u8>, symmetriccipher::Symm
     // read from or written to them.
     let mut final_result = Vec::<u8>::new();
     let mut read_buffer = buffer::RefReadBuffer::new(data);
-    let mut buffer = [0; 128];
+    let mut buffer = [0; 2048];
     let mut write_buffer = buffer::RefWriteBuffer::new(&mut buffer);
 
     // Each encryption operation will "make progress". "Making progress"
@@ -74,7 +74,7 @@ pub fn decrypt(encrypted_data: &[u8],
 
     let mut final_result = Vec::<u8>::new();
     let mut read_buffer = buffer::RefReadBuffer::new(encrypted_data);
-    let mut buffer = [0; 128];
+    let mut buffer = [0; 2048];
     let mut write_buffer = buffer::RefWriteBuffer::new(&mut buffer);
 
     loop {
