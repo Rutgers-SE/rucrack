@@ -7,8 +7,6 @@ extern crate params;
 extern crate bodyparser;
 extern crate rustc_serialize;
 extern crate crossbeam;
-// extern crate libc;
-// extern crate celix;
 
 mod encryption;
 mod util;
@@ -25,7 +23,7 @@ use iron as i;
 use params::Params;
 
 // project packages
-use util::{prompt, read_r4c_file};
+use util::{prompt, read_r4c_file, file_to_vec};
 use keypool::KeyPool;
 use node::Worker;
 use rustc_serialize::json::{self, Json, ToJson};
@@ -34,7 +32,7 @@ use crack::crack;
 // standar packages
 use std::str::FromStr;
 use std::io::stdin;
-use std::collections::HashSet;
+// use std::collections::HashSet;
 use std::env::args;
 
 #[derive(Debug)]
@@ -86,9 +84,18 @@ fn master_repl() {
     };
 
     let w = Worker::builder(4, ip.clone()); // TODO: 4 is the thread count
-    let mut socket_set = HashSet::new();
-    let mut iv_bytes: Option<Vec<u8>> = None;
-    let mut cipher_text: Option<Vec<u8>> = None;
+    let mut socket_set = match args().nth(5) {
+        Some(filename) => file_to_vec(filename),
+        None => vec![]
+    };
+    let mut iv_bytes: Option<Vec<u8>> = match args().nth(3) {
+        Some(filename) => read_r4c_file(filename),
+        None => None
+    };
+    let mut cipher_text: Option<Vec<u8>> = match args().nth(4) {
+        Some(filename) => read_r4c_file(filename),
+        None => None
+    };
 
     println!("{:?}", w);
 
@@ -109,7 +116,7 @@ fn master_repl() {
                 match v {
                     Op::AddSlave(ip) => {
                         println!("Adding IP: {:?}", ip);
-                        socket_set.insert(ip);
+                        socket_set.push(ip);
                     }
                     Op::ListSlaves => {
                         println!("CipherFile {:?}", ct);

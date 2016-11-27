@@ -3,7 +3,36 @@ use std::io::prelude::*;
 use std::io::stdout;
 use std::u8;
 use std::string::ToString;
+use hyper::Url;
+use std::str::FromStr;
 
+pub fn pop_nl(s: &mut String) {
+    match s.pop() { // nice
+        Some(c) if c != '\n' => {
+            // println!("{}", c);
+            s.push(c);
+        }
+        _ => (),
+    }
+}
+
+pub fn file_to_vec(filename: String) -> Vec<Url> {
+    let mut output = vec![];
+    let mut file = File::open(filename).unwrap();
+    let mut buffer = String::new();
+    file.read_to_string(&mut buffer).unwrap();
+    let lines = buffer.split("\n").collect::<Vec<&str>>();
+    for line in lines.iter() {
+        let mut s = line.to_string();
+        pop_nl(&mut s);
+        // println!("{}", s);
+        if s != "" {
+            output.push(Url::from_str(s.as_str()).unwrap());
+        }
+    }
+
+    output
+}
 
 pub fn u8_vector(amount: u8) -> Vec<u8> {
     let mut v: Vec<u8> = vec![];
@@ -23,7 +52,6 @@ pub fn read_r4c_file(arg: String) -> Option<Vec<u8>> {
 
     match buf.pop() { // nice
         Some(c) if c != '\n' => {
-            println!("{}", c);
             buf.push(c);
         }
         _ => (),
