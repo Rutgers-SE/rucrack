@@ -45,12 +45,25 @@ pub fn read_r4c_file(arg: String) -> Option<Vec<u8>> {
     let mut buf = String::new();
     file.read_to_string(&mut buf);
 
+    match buf.pop() { // nice
+        Some(c) if c != '\n' => {
+            println!("{}", c);
+            buf.push(c);
+        }
+        _ => ()
+    }
+
     let mut count = 0;
     let mut tmp = 0;
 
     for ch in buf.chars() {
         let s = ch.to_string();
-        let u4 = u8::from_str_radix(&s, 16).unwrap();
+        let u4 = match u8::from_str_radix(&s, 16) {
+            Ok(e) => e,
+            Err(e) => {
+                panic!("I paniced with {:?} -- {:?}", s, e)
+            }
+        };
         if count % 2 == 0 {
             // output.push(u4);
             tmp = u4 << 4;
