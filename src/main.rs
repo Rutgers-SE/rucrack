@@ -177,8 +177,6 @@ fn master_repl() {
 
 fn slave_repl() {
     fn handle(req: &mut iron::Request) -> i::IronResult<iron::Response> {
-        // println!("{:?}", req.get::<Params>());
-        // println!("Params:{:?}", req.get::<Params>());
         match req.get::<Params>() {
             Ok(map) => {
                 match map.find(&["key"]) {
