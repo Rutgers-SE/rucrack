@@ -43,6 +43,8 @@ fn dc(cipher_text: &Vec<u8>,
 // returns potential keys
 pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8>> {
     let keys = kp.split_key(thread_count);
+    println!("{:?}", keys);
+    // let mut tc = Arc::new(thread_count.clone());
 
     let mut threads = vec![]; // thread pool
 
@@ -51,12 +53,16 @@ pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8
     let (tdone, rdone) = channel::<bool>();
     let (tkill, _rkill) = channel();
 
+    // let ref rcc = tc.as_ref();
+
     for key in keys {
         let mut key = key.clone();
         // Cloning to make it thread safe
         let tx = tx.clone();
         let tdone = tdone.clone();
         let cipher_text = cipher_text.clone();
+        // let thread_count = thread_count.clone();
+        // let ref tc = tc.as_ref();
 
         threads.push(thread::spawn(move || {
             loop {
@@ -72,6 +78,10 @@ pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8
                 }
                 //     }
                 // }
+                // if thread_count != *tc.as_ref() {
+                //     println!("Killing Slave");
+                //     break;
+                // }
             }
         }));
     }
@@ -86,6 +96,7 @@ pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8
                 tkill.send(()).unwrap();
                 output.push(v);
                 println!("Key sent!");
+                // tc = Arc::new(thread_count.clone() - 1);
                 // unsafe {
                 //     for t in threads {
                 //         let pt = t.into_pthread_t();

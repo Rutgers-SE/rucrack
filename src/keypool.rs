@@ -38,6 +38,7 @@ impl KeyPool {
         } else {
             ((kp.dynamic_ms_cap as i64 + 1) / parition_count) as u8
         };
+        println!("{}", step);
         let mut cap = step as u8;
         let mut cursor = kp.dynamic_bytes[0];
 

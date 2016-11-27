@@ -140,6 +140,7 @@ fn master_repl() {
                         kp.static_ms_bytes = bytes;
                         // NOTE: 16 will be replaced with the ip's
                         let keys = kp.split_key(ss.len() as i64);
+                        println!("{:?}", keys);
 
                         crossbeam::scope(|scope| {
                             scope.defer(|| println!("All slaves done! (YAY)"));
