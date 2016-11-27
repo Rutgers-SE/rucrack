@@ -1,10 +1,10 @@
 use crypto::{symmetriccipher, buffer, aes, blockmodes};
 use crypto::buffer::{ReadBuffer, WriteBuffer, BufferResult};
-use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary};
 
 
 // Encrypt a buffer with the given key and iv using
 // AES-256/CBC/Pkcs encryption.
+#[allow(unused)]
 pub fn encrypt(data: &[u8], key: &[u8]) -> Result<Vec<u8>, symmetriccipher::SymmetricCipherError> {
 
     // Create an encryptor instance of the best performing

@@ -1,7 +1,7 @@
 use util::{u8_vector};
 use overflow::{WrappedStep, WrappedInc};
 use std::fmt;
-use rustc_serialize::json::{self, Json, ToJson};
+use rustc_serialize::json::{Json, ToJson};
 use std::collections::BTreeMap;
 
 
@@ -41,7 +41,7 @@ impl KeyPool {
         let mut cap = step as u8;
         let mut cursor = kp.dynamic_bytes[0];
 
-        for key_id in 0..parition_count {
+        for _ in 0..parition_count {
             let mut db = u8_vector(kp.dynamic_bytes.len() as u8);
             db[0] = cursor;
             // println!("{:?}, {:?}", cap, cursor);
@@ -57,31 +57,6 @@ impl KeyPool {
             cursor = cursor.step(&(step as u8));
             cap = cap.step(&(step as u8));
             // println!("{:?}, {:?}, {:?}", cap, cursor, step);
-        }
-
-        output
-    }
-
-    // returns a vector of keys containing the amount specified by the `parition_count`
-    pub fn generate_keys(parition_count: i64, dynamic_byte_len: u8) -> Vec<KeyPool> {
-        let mut output: Vec<KeyPool> = vec![];
-        let step = 256 / parition_count;
-        let mut cap = step as u8;
-        let mut cursor = 0;
-
-        for key_id in 0..parition_count {
-            let mut db = u8_vector(dynamic_byte_len);
-            // println!("Cursor: {}", cursor);
-            db[0] = cursor;
-            output.push(KeyPool {
-                dynamic_ms_cap: cap.clone(),
-                parition_count: parition_count as u8,
-                static_ms_bytes: vec![],
-                dynamic_bytes: db,
-                static_ls_bytes: vec![]
-            });
-            cursor = cursor.step(&(step as u8));
-            cap = cap.step(&(step as u8));
         }
 
         output

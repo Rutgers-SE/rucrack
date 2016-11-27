@@ -1,3 +1,4 @@
+//  This file provides traits for wrapping around u8
 pub trait WrappedInc {
     fn inc(self) -> Self;
     fn dec(self) -> Self;
@@ -18,7 +19,7 @@ impl WrappedStep for u8 {
         }
         output
     }
-    fn back(self, other: &Self) -> Self {
+    fn back(self, _: &Self) -> Self {
         unimplemented!();
     }
 }

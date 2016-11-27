@@ -1,13 +1,9 @@
-use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary};
+use util::{is_english};
 use keypool::KeyPool;
-use encryption::{encrypt, decrypt};
-
+use encryption::{decrypt};
 use std::sync::mpsc::{channel, Sender};
-use std::env::args;
 use std::thread;
-use std::str::{from_utf8, from_utf8_unchecked};
-
-
+use std::str::{from_utf8};
 
 fn dc(cipher_text: &Vec<u8>, key: &KeyPool, sender: &Sender<Vec<u8>>) {
     let mut key = key.clone();
@@ -20,19 +16,17 @@ fn dc(cipher_text: &Vec<u8>, key: &KeyPool, sender: &Sender<Vec<u8>>) {
                     Ok(pt) => {
                         println!("Msg found \"{}\"", pt);
                         if is_english(pt.to_string()) {
-                            sender.send(key.to_vec());
+                            sender.send(key.to_vec()).unwrap();
                         }
                     }
-                    Err(e) => {
-                        // println!("{}", e);
+                    Err(_) => {
                         invalid_count = invalid_count + 1;
                         ()
                     }
 
                 }
             }
-            Err(e) => {
-                // println!("{:?}", e);
+            Err(_) => {
                 fail_count = fail_count + 1;
                 ()
             }
@@ -56,7 +50,7 @@ pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8
 
     // com. channel
     let (tx, rx) = channel();
-    for mut key in keys {
+    for key in keys {
 
         // Cloning to make it thread safe
         let tx = tx.clone();
@@ -68,10 +62,10 @@ pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8
     }
 
     for t in threads {
-        t.join();
+        t.join().unwrap();
     }
 
-    tx.send(vec![1]); // This is how to channel is notified to break the loop.
+    tx.send(vec![1]).unwrap(); // This is how to channel is notified to break the loop.
 
     let mut output = vec![]; // This will become the list of potential keys
     loop {

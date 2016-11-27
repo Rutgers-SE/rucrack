@@ -1,7 +1,3 @@
-#![allow(dead_code)]
-#![allow(unused)]
-#![deny(warnings)]
-
 extern crate crypto;
 extern crate rand;
 extern crate time;
@@ -22,41 +18,23 @@ mod crack;
 
 // external packages
 use time::PreciseTime;
-use rand::Rng;
-use rand::os::OsRng;
-// use hyper::server::{Server, Request, Response};
-use hyper::client as cl;
-use hyper::{Error, Url};
-use hyper::client::IntoUrl;
+use hyper::{Url};
 use iron::prelude::*;
 use iron as i;
 use params::Params;
-use bodyparser::{Raw, Json as J};
-// use iron::Plugin;
 
 // project packages
-use encryption::{encrypt, decrypt};
-use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary, prompt, read_r4c_file};
-use overflow::{WrappedStep, WrappedInc};
+use util::{prompt, read_r4c_file};
 use keypool::KeyPool;
 use node::Worker;
 use rustc_serialize::json::{self, Json, ToJson};
 use crack::crack;
 
 // standar packages
-use std::str::{from_utf8, FromStr};
-use std::sync::mpsc::{Sender, channel};
-use std::sync::{Arc, Mutex};
-use std::io::{stdout, stdin};
-use std::net::{SocketAddrV4, TcpStream, UdpSocket, TcpListener, Ipv4Addr, SocketAddr,
-               ToSocketAddrs};
+use std::str::{FromStr};
+use std::io::{stdin};
 use std::collections::HashSet;
 use std::env::args;
-use std::marker::Sync;
-use std::thread;
-use std::time::Duration;
-use std::process::Command;
-use std::io::prelude::*;
 
 #[derive(Debug)]
 enum Op {
@@ -97,11 +75,7 @@ fn parse(value: Vec<String>) -> Result<Op, String> {
 }
 
 fn master_repl() {
-    // prompt("master-ip and port> ");
-    //
-    // let mut raw_ip = String::new();
-    // stdin().read_line(&mut raw_ip).expect("Expected valid string");
-    let raw = args().nth(2).unwrap();
+    let raw = args().nth(2).unwrap(); // This is the port number
     let mut base = "http://127.0.0.1:".to_string();
     base.push_str(raw.as_str());
 
@@ -124,7 +98,7 @@ fn master_repl() {
         stdin().read_line(&mut input).expect("You did not enter a valid string");
 
         let ivb = iv_bytes.clone();
-        let sslen = socket_set.len();
+        // let sslen = socket_set.len();
         let ss = socket_set.clone();
         let ct = cipher_text.clone();
 
@@ -184,7 +158,7 @@ fn master_repl() {
                                     // let final = msg.as_str();
                                     // println!("{:?}", msg);
 
-                                    let resp = client.post(url)
+                                    let _resp = client.post(url)
                                         .send()
                                         .unwrap();
 
@@ -255,12 +229,11 @@ fn slave_repl() {
             base.push_str(port);
         }
     }
-    println!("Listening on port {}", base);
 
-    let mut chain = i::Chain::new(handle);
+    let chain = i::Chain::new(handle);
     match i::Iron::new(chain).http(base.as_str()) {
-        Ok(_) => println!("Success"),
-        Err(_) => println!("Noooo"),
+        Ok(_) => println!("Slave running on {}", base),
+        Err(_) => println!("Slave was not able to start"),
     }
 
     // loop {}
