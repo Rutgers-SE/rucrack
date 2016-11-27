@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+cargo run  master 8080 IVfile1.txt Cipherfile1.txt slave-list.txt
