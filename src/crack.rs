@@ -42,9 +42,10 @@ fn dc(cipher_text: &Vec<u8>, key: &KeyPool, sender: &Sender<Vec<u8>>) {
             break;
         }
     }
-    println!("Invalid string {} time(s)\nFailed decode {} times",
-        invalid_count,
-        fail_count);
+    // // NOTE: For debugging
+    // println!("Invalid string {} time(s)\nFailed decode {} times",
+    //     invalid_count,
+    //     fail_count);
 }
 
 // returns potential keys
@@ -69,10 +70,10 @@ pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8
     for t in threads {
         t.join();
     }
-    tx.send(vec![1]);
 
-    let mut output = vec![];
+    tx.send(vec![1]); // This is how to channel is notified to break the loop.
 
+    let mut output = vec![]; // This will become the list of potential keys
     loop {
         match rx.recv() {
             Ok(vector) => {
