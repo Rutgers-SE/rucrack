@@ -1,51 +1,50 @@
-use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary, split};
+use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary};
 use keypool::KeyPool;
 use encryption::{encrypt, decrypt};
 
 use std::sync::mpsc::{channel, Sender};
 use std::env::args;
 use std::thread;
-use std::str::{from_utf8};
+use std::str::{from_utf8, from_utf8_unchecked};
 
 
 
 fn dc(cipher_text: &Vec<u8>, key: &KeyPool, sender: &Sender<Vec<u8>>) {
-    // let mut output = vec![];
     let mut key = key.clone();
+    let mut invalid_count = 0;
+    let mut fail_count = 0;
     loop {
         match decrypt(&cipher_text[..], &key.to_vec()) {
             Ok(decrypted_data) => {
-                // println!("{:?}", decrypted_data);
-                let mut dd = decrypted_data.clone();
-                for d in dd {
-                    let (c1, c2) = split(d);
-                    print!("{}{}", c1, c2);
-                }
-                println!("");
                 match from_utf8(&decrypted_data) {
                     Ok(pt) => {
-                        // println!("Found Key  {:?}", key.to_vec());
+                        println!("{:?}", pt);
                         if is_english(pt.to_string()) {
                             sender.send(key.to_vec());
                         }
                     }
                     Err(e) => {
-                        // println!("Error Reading to utf8 -- {:?} {:?}", e, decrypted_data);
+                        // println!("{}", e);
+                        invalid_count = invalid_count + 1;
                         ()
                     }
+
                 }
             }
             Err(e) => {
-                println!("Error decrypting {:?}", e);
+                // println!("{:?}", e);
+                fail_count = fail_count + 1;
                 ()
             }
         }
-        // println!("{:?}", key);
         key = key.inc();
         if key.is_done() {
             break;
         }
     }
+    println!("Invalid string {} time(s)\nFailed decode {} times",
+        invalid_count,
+        fail_count);
 }
 
 // returns potential keys
@@ -82,7 +81,7 @@ pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8
                 }
                 output.push(vector);
             }
-            Err(_) => break
+            Err(_) => break,
         }
     }
 

@@ -11,6 +11,7 @@ extern crate params;
 extern crate bodyparser;
 extern crate rustc_serialize;
 extern crate crossbeam;
+// extern crate unicode;
 
 mod encryption;
 mod util;
@@ -26,7 +27,7 @@ use rand::os::OsRng;
 // use hyper::server::{Server, Request, Response};
 use hyper::client as cl;
 use hyper::{Error, Url};
-use hyper::client::{IntoUrl};
+use hyper::client::IntoUrl;
 use iron::prelude::*;
 use iron as i;
 use params::Params;
@@ -35,10 +36,10 @@ use bodyparser::{Raw, Json as J};
 
 // project packages
 use encryption::{encrypt, decrypt};
-use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary, prompt, read_r4c_file, split};
+use util::{u8_vector, read_file_from_arg, is_english, load_linux_dictionary, prompt, read_r4c_file};
 use overflow::{WrappedStep, WrappedInc};
-use keypool::{KeyPool};
-use node::{Worker};
+use keypool::KeyPool;
+use node::Worker;
 use rustc_serialize::json::{self, Json, ToJson};
 use crack::crack;
 
@@ -47,7 +48,8 @@ use std::str::{from_utf8, FromStr};
 use std::sync::mpsc::{Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::io::{stdout, stdin};
-use std::net::{SocketAddrV4, TcpStream, UdpSocket, TcpListener, Ipv4Addr, SocketAddr, ToSocketAddrs};
+use std::net::{SocketAddrV4, TcpStream, UdpSocket, TcpListener, Ipv4Addr, SocketAddr,
+               ToSocketAddrs};
 use std::collections::HashSet;
 use std::env::args;
 use std::marker::Sync;
@@ -62,47 +64,34 @@ enum Op {
     ListSlaves,
     IvFile(String),
     CipherFile(String),
-    Listen,
-    Start
+    Start,
 }
 
 fn sanitize(input: String) -> Vec<String> {
     let splits = input.split(" ");
-    splits
-        .map(|t| t.to_string().trim().to_string())
+    splits.map(|t| t.to_string().trim().to_string())
         .collect::<Vec<String>>()
 }
 
 // NOTE: there must be a better way
-fn parse (value: Vec<String>) -> Result<Op, String> {
+fn parse(value: Vec<String>) -> Result<Op, String> {
     if value[0] == "slave".to_string() {
         let ref raw = value[1];
         match Url::from_str(raw.as_str()) {
             Ok(value) => Ok(Op::AddSlave(value)),
-            Err(e) => Err(e.to_string())
+            Err(e) => Err(e.to_string()),
         }
-    }
-
-    else if value[0] == "list".to_string() {
+    } else if value[0] == "list".to_string() {
         Ok(Op::ListSlaves)
-    }
-
-    else if value[0] == "start".to_string() {
+    } else if value[0] == "start".to_string() {
         Ok(Op::Start)
-    }
-
-    else if value[0] == "iv-file".to_string() {
+    } else if value[0] == "iv-file".to_string() {
         let ref raw = value[1];
         Ok(Op::IvFile(raw.clone()))
-    }
-
-    else if value[0] == "cipher-file".to_string() {
+    } else if value[0] == "cipher-file".to_string() {
         let ref raw = value[1];
         Ok(Op::CipherFile(raw.clone()))
-    }
-
-
-    else {
+    } else {
         Err("command not supported".to_string())
     }
 }
@@ -118,7 +107,7 @@ fn master_repl() {
 
     let ip = match Url::from_str(&base.as_str()) {
         Ok(value) => value,
-        Err(e) => panic!("{}", e)
+        Err(e) => panic!("{}", e),
     };
 
     let w = Worker::builder(4, ip.clone()); // TODO: 4 is the thread count
@@ -141,69 +130,72 @@ fn master_repl() {
 
         let tokens: Vec<String> = sanitize(input.clone());
         match parse(tokens) {
-            Ok(v) =>  match v {
-                Op::AddSlave(ip) => {
-                    println!("Adding IP: {:?}", ip);
-                    socket_set.insert(ip);
+            Ok(v) => {
+                match v {
+                    Op::AddSlave(ip) => {
+                        println!("Adding IP: {:?}", ip);
+                        socket_set.insert(ip);
+                    }
+                    Op::ListSlaves => {
+                        println!("CipherFile {:?}", ct);
+                        println!("IV file {:?}", ivb);
+                        println!("{:?}", socket_set);
+                    }
+                    Op::IvFile(f_name) => {
+                        iv_bytes = read_r4c_file(f_name);
+                    }
+                    Op::CipherFile(f_name) => {
+                        cipher_text = read_r4c_file(f_name);
+                    }
+                    Op::Start => {
+                        use hyper::client::Client;
+                        let bytes = ivb.unwrap_or(vec![]);
+
+                        // Setting up the key
+                        let mut kp = KeyPool::new(bytes.len() as u8, (16 - bytes.len()) as u8, 0);
+                        kp.static_ms_bytes = bytes;
+                        // NOTE: 16 will be replaced with the ip's
+                        let keys = kp.split_key(ss.len() as i64);
+
+                        crossbeam::scope(|scope| {
+                            scope.defer(|| println!("All computers done"));
+                            for idx in 0..ss.len() {
+                                let keys = keys.clone();
+                                let ss = ss.clone();
+                                let cipher_text = cipher_text.clone();
+
+                                scope.spawn(move || {
+                                    let client = Client::new();
+                                    let ref ul: Url = *(ss.iter().nth(idx).unwrap());
+                                    let mut url = ul.clone();
+
+                                    let cipher = json::encode(&cipher_text).unwrap();
+                                    let cipher_string = cipher.to_string();
+
+                                    let mut msg = "key=".to_string();
+                                    let job: Json = keys[idx].to_json();
+                                    msg.push_str(job.to_string().as_str());
+                                    msg.push_str("&cipher=");
+                                    msg.push_str(cipher_string.as_str());
+
+                                    url.set_query(Some(msg.as_str()));
+
+
+                                    // let final = msg.as_str();
+                                    // println!("{:?}", msg);
+
+                                    let resp = client.post(url)
+                                        .send()
+                                        .unwrap();
+
+                                    // println!("{:?}", resp);
+                                });
+                            }
+                        });
+                    }
+                    // _ => unimplemented!()
                 }
-                Op::ListSlaves => {
-                    println!("CipherFile {:?}", ct);
-                    println!("IV file {:?}", ivb);
-                    println!("{:?}", socket_set);
-                }
-                Op::IvFile(f_name) => {
-                    iv_bytes = read_r4c_file(f_name);
-                }
-                Op::CipherFile(f_name) => {
-                    cipher_text = read_r4c_file(f_name);
-                }
-                Op::Start => {
-                    use hyper::client::{Client};
-                    let bytes = ivb.unwrap_or(vec![]);
-
-                    // Setting up the key
-                    let mut kp = KeyPool::new(
-                        bytes.len() as u8,
-                        (16 - bytes.len()) as u8, 0);
-                    kp.static_ms_bytes = bytes;
-                    let keys = kp.split_key((4*sslen) as i64); // NOTE: 16 will be replaced with the ip's
-
-                    crossbeam::scope(|scope| {
-                        scope.defer(|| println!("All computers done"));
-                        for idx in 0..ss.len() {
-                            let keys = keys.clone();
-                            let ss = ss.clone();
-                            let cipher_text = cipher_text.clone();
-
-                            scope.spawn(move || {
-                                let client = Client::new();
-                                let ref ul: Url = *(ss.iter().nth(idx).unwrap());
-                                let mut url = ul.clone();
-
-                                let cipher = json::encode(&cipher_text).unwrap();
-                                let cipher_string = cipher.to_string();
-
-                                let mut msg = "key=".to_string();
-                                let job: Json = keys[idx].to_json();
-                                msg.push_str(job.to_string().as_str());
-                                msg.push_str("&cipher=");
-                                msg.push_str(cipher_string.as_str());
-
-                                url.set_query(Some(msg.as_str()));
-
-
-                                // let final = msg.as_str();
-                                // println!("{:?}", msg);
-
-                                // println!("Speaking to {}", url);
-                                client.post(url)
-                                    .send();
-                            });
-                        }
-                    });
-                }
-                _ => unimplemented!()
-            },
+            }
             Err(e) => {
                 println!("{:?}", e);
             }
@@ -226,18 +218,19 @@ fn slave_repl() {
                                 println!("{}, {:?}", kp, cipher_text);
 
                                 println!("Starting Crack");
+                                // NOTE: we assuming 4 threads per machine
                                 let keys = crack(kp, cipher_text, 4);
                                 println!("Finished Crack");
-                                println!("potential keys {:?}", keys);
+                                println!("potential keys count {:?}", keys.len());
+
+                                let keys_json = json::encode(&keys).unwrap();
+                                return Ok(iron::Response::with((iron::status::Ok,
+                                                                keys_json.to_string())));
                             }
-                            _ => {
-                                println!("Invalid request")
-                            }
+                            _ => println!("Invalid request"),
                         }
                     }
-                    _ => {
-                        println!("Invalid request")
-                    }
+                    _ => println!("Invalid request"),
                 }
             }
             Err(e) => {
@@ -262,19 +255,16 @@ fn slave_repl() {
 
     let mut chain = i::Chain::new(handle);
     match i::Iron::new(chain).http(base.as_str()) {
-        Ok(_) => {
-            println!("Success")
-        }
-        Err(_) => {
-            println!("Noooo")
-        }
+        Ok(_) => println!("Success"),
+        Err(_) => println!("Noooo"),
     }
 
     // loop {}
 }
 
 fn main() {
-    let role = args().nth(1)
+    let role = args()
+        .nth(1)
         .expect("Role");
 
     if "master".to_string() == role {

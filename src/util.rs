@@ -39,14 +39,6 @@ pub fn u8_vector(amount: u8) -> Vec<u8> {
     v
 }
 
-pub fn split(by: u8) -> (char, char) {
-    let first = by >> 4;
-    let second = (by << 4) >> 4;
-    // println!("{} {}", first, second);
-
-    (first as char, second as char)
-}
-
 pub fn read_r4c_file(arg: String) -> Option<Vec<u8>> {
     let mut output: Vec<u8> = vec![];
     let mut file = File::open(arg).unwrap();
