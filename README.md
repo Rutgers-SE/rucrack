@@ -23,7 +23,7 @@ master> slave http://x.x.x.x:xxx # This will change per slave
 To run the slave:
 
 ```bash
-$ cargo run slave http://x.x.x.x:xxxx
+$ cargo run slave x.x.x.x:xxxx
 ```
 
 This will start a server and wait for jobs
