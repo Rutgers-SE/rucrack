@@ -18,7 +18,7 @@ fn dc(cipher_text: &Vec<u8>, key: &KeyPool, sender: &Sender<Vec<u8>>) {
             Ok(decrypted_data) => {
                 match from_utf8(&decrypted_data) {
                     Ok(pt) => {
-                        println!("{:?}", pt);
+                        println!("Msg found \"{}\"", pt);
                         if is_english(pt.to_string()) {
                             sender.send(key.to_vec());
                         }

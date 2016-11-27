@@ -215,13 +215,17 @@ fn slave_repl() {
                             Some(&params::Value::String(ref cipher)) => {
                                 let cipher_text: Vec<u8> = json::decode(&cipher).unwrap();
                                 let kp: KeyPool = json::decode(&key).unwrap();
-                                println!("{}, {:?}", kp, cipher_text);
+                                // println!("{}, {:?}", kp, cipher_text);
 
                                 println!("Starting Crack");
                                 // NOTE: we assuming 4 threads per machine
+                                let start = PreciseTime::now();
                                 let keys = crack(kp, cipher_text, 4);
+                                let end = PreciseTime::now();
                                 println!("Finished Crack");
-                                println!("potential keys count {:?}", keys.len());
+                                println!("number of potential keys {:?}", keys.len());
+                                println!("potential keys {:?}", keys);
+                                println!("Time taken {}\n\n\n", start.to(end));
 
                                 let keys_json = json::encode(&keys).unwrap();
                                 return Ok(iron::Response::with((iron::status::Ok,
@@ -265,39 +269,11 @@ fn slave_repl() {
 fn main() {
     let role = args()
         .nth(1)
-        .expect("Role");
+        .expect("You need to pass the role as the first argument");
 
     if "master".to_string() == role {
         master_repl();
     } else if "slave".to_string() == role {
         slave_repl();
     }
-
-    // let iv = read_r4c_file("IVfile1.txt".to_string());
-    // println!("{:?}", iv);
-
-    // let client = cl::Client::new();
-    // let mut res: cl::Response = client.get("https://reddit.com").send().unwrap();
-    // let mut output = String::new();
-    // res.read_to_string(&mut output);
-    // println!("{}", output);
-
-    // Load the dictionary
-    // let sorted_dictionary = load_linux_dictionary().unwrap();
-    // if args().len() != 4 {
-    //     panic!("You need to supply three arguments");
-    // }
-    //
-    // // Parse commandline argument
-    // let thread_count: i64 = args().nth(2)
-    //     .expect("Second argument is the thread count")
-    //     .parse()
-    //     .expect("You should have given a valid integer.");
-    // let role = args().nth(3)
-    //     .expect("You need to define the role of the client");
-
-    // // Random number generator
-    // let mut rng = OsRng::new() // new and unwrap are Rust idioms
-    //     .ok().unwrap();
-
 }
