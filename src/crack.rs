@@ -4,12 +4,9 @@ use encryption::decrypt;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 use std::str::from_utf8;
-// NOTE: mid kill attempt
-// use celix::pthread_cancel;
-// use std::os::unix::thread::JoinHandleExt;
 
-fn dc(cipher_text: &Vec<u8>,
-      key: &KeyPool,
+fn dc(cipher_text: Vec<u8>,
+      key: KeyPool,
       sender: &Sender<Vec<u8>>,
       tdone: &Sender<bool>)
       -> KeyPool {
@@ -21,7 +18,10 @@ fn dc(cipher_text: &Vec<u8>,
                     println!("Msg found \"{}\", key = {}", pt, key);
                     if is_english(pt.to_string()) {
                         match sender.send(key.to_vec()) {
-                            Ok(_) => tdone.send(true).unwrap(),
+                            Ok(_) => {
+                                tdone.send(true).unwrap();
+                                println!("Sent key");
+                            }
                             Err(e) => panic!("Sorry master.. I fucked up... -- {}", e),
                         }
                     }
@@ -66,9 +66,10 @@ pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8
         let cipher_text = cipher_text.clone();
 
         threads.push(thread::spawn(move || {
+            // let mut key = key.clone();
             loop {
                 if !key.is_done() {
-                    key = dc(&cipher_text, &key, &tx, &tdone);
+                    key = dc(cipher_text.clone(), key.clone(), &tx, &tdone);
                 } else {
                     tcount.send(1).unwrap();
                     break;
@@ -81,26 +82,33 @@ pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8
     let mut output = vec![]; // This will become the list of potential keys
 
     loop {
-        match rdone.recv() {
+        match rdone.try_recv() {
             Ok(value) if value => {
+                println!("Awesome");
                 let v = rx.recv().unwrap();
                 output.push(v);
                 println!("Key sent!");
                 break;
             }
-            _ => (),
+            _ => {
+                // if count == klen {
+                //     println!("Here");
+                //     break;
+                // }
+            }
         }
 
-        match rcount.recv() {
+        match rcount.try_recv() {
             Ok(n) => {
                 count = count + n;
             }
             _ => ()
         }
-
         if count == klen {
+            println!("Here");
             break;
         }
+
     }
 
     for t in threads {

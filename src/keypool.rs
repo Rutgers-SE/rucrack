@@ -64,7 +64,6 @@ impl KeyPool {
     }
 
     pub fn is_done(&self) -> bool {
-        // println!("{:?}", self);
         let mut done = true;
         for idx in 1..self.dynamic_bytes.len() {
             if self.dynamic_bytes[idx] != 255 {

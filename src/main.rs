@@ -31,7 +31,7 @@ use crack::crack;
 
 // standar packages
 use std::str::FromStr;
-use std::io::stdin;
+use std::io::{stdin, Read};
 // use std::collections::HashSet;
 use std::env::args;
 
@@ -140,7 +140,7 @@ fn master_repl() {
                         kp.static_ms_bytes = bytes;
                         // NOTE: 16 will be replaced with the ip's
                         let keys = kp.split_key(ss.len() as u64);
-                        println!("{:?}", keys);
+                        // println!("{:?}", keys);
 
                         crossbeam::scope(|scope| {
                             scope.defer(|| println!("All slaves done! (YAY)"));
@@ -165,8 +165,12 @@ fn master_repl() {
 
                                     url.set_query(Some(msg.as_str()));
 
-                                    match client.post(url).send() {
-                                        Ok(_) => (),
+                                    match client.get(url).send() {
+                                        Ok(mut resp) => {
+                                            let mut buf = String::new();
+                                            resp.read_to_string(&mut buf).unwrap();
+                                            println!("{}", buf);
+                                        }
                                         Err(_) => (),
                                     }
                                 });
@@ -205,9 +209,10 @@ fn slave_repl() {
                                 println!("potential keys {:?}", keys);
                                 println!("Time taken {}\n", start.to(end));
 
-                                let keys_json = json::encode(&keys).unwrap();
+                                let key_json = json::encode(&keys).unwrap();
+                                println!("{}", key_json);
                                 return Ok(iron::Response::with((iron::status::Ok,
-                                                                keys_json.to_string())));
+                                                                key_json.to_string())));
                             }
                             _ => println!("Invalid request"),
                         }
@@ -223,18 +228,9 @@ fn slave_repl() {
 
         Ok(iron::Response::with((iron::status::Ok, "Hello, From Iron")))
     }
-    // let mut base: String = "192.168.1.245:".to_owned();
     let base = match args().nth(2) {
         Some(port) => port,
         None => panic!("You must supply the IP and port combo"),
-        // Some(port) => {
-        // base.push_str(port.as_str());
-        // }
-        // None => {
-        // let port: &str = "4567";
-        // base.push_str(port);
-        // panic
-        // }
     };
 
     let chain = i::Chain::new(handle);
