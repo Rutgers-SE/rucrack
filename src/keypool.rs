@@ -3,6 +3,7 @@ use overflow::{WrappedStep, WrappedInc};
 use std::fmt;
 use rustc_serialize::json::{Json, ToJson};
 use std::collections::BTreeMap;
+use std::u8;
 
 
 #[derive(Debug, Clone, RustcDecodable)]
@@ -27,38 +28,33 @@ impl KeyPool {
         }
     }
 
-    pub fn split_key(&self, parition_count: i64) -> Vec<KeyPool> {
-        if parition_count <= 0 {
-            return vec![self.clone()];
-        }
+    pub fn split_key(&self, parition_count: u64) -> Vec<KeyPool> {
         let mut output = vec![];
-        let kp: KeyPool = self.clone();
-        let step = if kp.dynamic_ms_cap == 0 {
-            ((256) / parition_count) as u8
+
+        let mut dynamic_bytes = self.dynamic_bytes.clone();
+        let step = if self.dynamic_ms_cap == 0 {
+            let o = ((256 - self.dynamic_bytes[0] as u64) / parition_count) as u8;
+            // println!("o {}", o);
+            o
         } else {
-            ((kp.dynamic_ms_cap as i64 + 1) / parition_count) as u8
+            ((self.dynamic_ms_cap as u64 + 1) / parition_count) as u8
         };
-        println!("{}", step);
-        let mut cap = step as u8;
-        let mut cursor = kp.dynamic_bytes[0];
 
         for _ in 0..parition_count {
-            let mut db = u8_vector(kp.dynamic_bytes.len() as u8);
-            db[0] = cursor;
-            // println!("{:?}, {:?}", cap, cursor);
+            let db = dynamic_bytes.clone();
+            let cap = dynamic_bytes[0].step(&step);
 
             output.push(KeyPool {
-                dynamic_ms_cap: cap.clone(),
-                parition_count: parition_count as u8,
-                static_ms_bytes: kp.static_ms_bytes.clone(),
+                dynamic_ms_cap: cap,
+                parition_count: 1,
+                static_ms_bytes: self.static_ms_bytes.clone(),
                 dynamic_bytes: db,
-                static_ls_bytes: kp.static_ls_bytes.clone(),
+                static_ls_bytes: self.static_ls_bytes.clone()
             });
 
-            cursor = cursor.step(&(step as u8));
-            cap = cap.step(&(step as u8));
-            // println!("{:?}, {:?}, {:?}", cap, cursor, step);
+            dynamic_bytes[0] = dynamic_bytes[0].step(&step);
         }
+
 
         output
     }
@@ -87,6 +83,7 @@ impl KeyPool {
         done
     }
 
+    #[allow(unused)]
     pub fn to_vec(&self) -> Vec<u8> {
         let mut output: Vec<u8> = vec![];
         for b in self.static_ms_bytes.clone() {
@@ -138,7 +135,7 @@ impl fmt::Display for KeyPool {
                "({},{}:{:?})",
                self.dynamic_ms_cap,
                self.parition_count,
-               self.to_vec())
+               self.dynamic_bytes)
     }
 }
 
@@ -169,22 +166,11 @@ impl ToJson for KeyPool {
 }
 
 #[test]
-fn test_generate_keys() {
-    let keys = KeyPool::generate_keys(2, 2 as u8);
-
-    assert!(keys.len() == 2);
-
-    assert!(keys[0].dynamic_bytes[0] == 0);
-    assert!(keys[0].dynamic_ms_cap == 128);
-    assert!(keys[1].dynamic_bytes[0] == 128);
-    assert!(keys[1].dynamic_ms_cap == 0);
-}
-
-#[test]
 fn test_split_key() {
-    let mut key = KeyPool::new(1, 14, 2, 0);
+    let mut key = KeyPool::new(14, 2, 0);
     let mut keys = key.split_key(2);
 
+    println!("{:?}", keys);
     assert!(keys[0].dynamic_bytes[0] == 0);
     assert!(keys[0].dynamic_ms_cap == 128);
     assert!(keys[1].dynamic_bytes[0] == 128);

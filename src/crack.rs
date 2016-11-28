@@ -18,7 +18,7 @@ fn dc(cipher_text: &Vec<u8>,
         Ok(decrypted_data) => {
             match from_utf8(&decrypted_data) {
                 Ok(pt) => {
-                    println!("Msg found \"{}\"", pt);
+                    println!("Msg found \"{}\", key = {}", pt, key);
                     if is_english(pt.to_string()) {
                         match sender.send(key.to_vec()) {
                             Ok(_) => tdone.send(true).unwrap(),
@@ -42,8 +42,10 @@ fn dc(cipher_text: &Vec<u8>,
 
 // returns potential keys
 pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8>> {
-    let keys = kp.split_key(thread_count);
-    println!("{:?}", keys);
+    let keys = kp.split_key(thread_count as u64);
+    for k in keys.clone() {
+        println!("{}", k);
+    }
     // let mut tc = Arc::new(thread_count.clone());
 
     let mut threads = vec![]; // thread pool
@@ -57,31 +59,16 @@ pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8
 
     for key in keys {
         let mut key = key.clone();
-        // Cloning to make it thread safe
         let tx = tx.clone();
         let tdone = tdone.clone();
         let cipher_text = cipher_text.clone();
-        // let thread_count = thread_count.clone();
-        // let ref tc = tc.as_ref();
 
         threads.push(thread::spawn(move || {
             loop {
-                // match rkill.try_recv() {
-                //     Ok(_) | Err(TryRecvError::Disconnected) => {
-                //         println!("Thread killed");
-                //         break;
-                //     }
-                //     Err(TryRecvError::Empty) => {
                 key = dc(&cipher_text, &key, &tx, &tdone);
                 if key.is_done() {
                     break;
                 }
-                //     }
-                // }
-                // if thread_count != *tc.as_ref() {
-                //     println!("Killing Slave");
-                //     break;
-                // }
             }
         }));
     }
@@ -91,18 +78,10 @@ pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8
     loop {
         match rdone.recv() {
             Ok(value) if value => {
-                // Yeah. I want to panic if no vector (not a part of the plan)
                 let v = rx.recv().unwrap();
                 tkill.send(()).unwrap();
                 output.push(v);
                 println!("Key sent!");
-                // tc = Arc::new(thread_count.clone() - 1);
-                // unsafe {
-                //     for t in threads {
-                //         let pt = t.into_pthread_t();
-                //         pthread_cancel(pt);
-                //     }
-                // }
                 break;
             }
             _ => (),

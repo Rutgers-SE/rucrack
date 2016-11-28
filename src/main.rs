@@ -139,7 +139,7 @@ fn master_repl() {
                         let mut kp = KeyPool::new(bytes.len() as u8, (16 - bytes.len()) as u8, 0);
                         kp.static_ms_bytes = bytes;
                         // NOTE: 16 will be replaced with the ip's
-                        let keys = kp.split_key(ss.len() as i64);
+                        let keys = kp.split_key(ss.len() as u64);
                         println!("{:?}", keys);
 
                         crossbeam::scope(|scope| {
