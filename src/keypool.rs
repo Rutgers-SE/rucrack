@@ -9,7 +9,7 @@ use std::u8;
 #[derive(Debug, Clone, RustcDecodable)]
 pub struct KeyPool {
     pub dynamic_ms_cap: u8,
-    pub parition_count: u8,
+    pub dynamic_ms_start: u8,
     pub static_ms_bytes: Vec<u8>,
     pub dynamic_bytes: Vec<u8>,
     pub static_ls_bytes: Vec<u8>,
@@ -21,7 +21,7 @@ impl KeyPool {
         // println!("{} {}", cap, parition_count);
         KeyPool {
             dynamic_ms_cap: 0, // meaning the value will eventuall wrap around
-            parition_count: 1,
+            dynamic_ms_start: 0,
             static_ms_bytes: u8_vector(ms_bytes),
             dynamic_bytes: u8_vector(dy_bytes),
             static_ls_bytes: u8_vector(ls_bytes),
@@ -46,7 +46,7 @@ impl KeyPool {
 
             output.push(KeyPool {
                 dynamic_ms_cap: cap,
-                parition_count: 1,
+                dynamic_ms_start: db[0],
                 static_ms_bytes: self.static_ms_bytes.clone(),
                 dynamic_bytes: db,
                 static_ls_bytes: self.static_ls_bytes.clone()
@@ -64,23 +64,20 @@ impl KeyPool {
     }
 
     pub fn is_done(&self) -> bool {
+        // println!("{:?}", self);
         let mut done = true;
-        if self.parition_count != 1 {
-            if !self.is_cap_reached() {
-                done = false;
-            }
-        } else {
-            if self.dynamic_bytes[0] != 255 {
-                done = false;
-            }
-        }
         for idx in 1..self.dynamic_bytes.len() {
             if self.dynamic_bytes[idx] != 255 {
                 done = false;
                 break;
             }
         }
-        done
+
+        if done && self.is_cap_reached() {
+            true
+        } else {
+            false
+        }
     }
 
     #[allow(unused)]
@@ -99,18 +96,19 @@ impl KeyPool {
         output
     }
 
-    /// Increments the dynamic bytes to emulate
-    pub fn inc(&mut self) -> KeyPool {
+    /// Increments the dynamic bytes to emulate counting
+    pub fn inc(&self) -> KeyPool {
+        let mut slf = self.clone();
         let mut idx = self.dynamic_bytes.len() - 1;
         loop {
             // bounds checking
-            if self.dynamic_bytes.len() == 0 || idx > self.dynamic_bytes.len() - 1 {
+            if slf.dynamic_bytes.len() == 0 || idx > slf.dynamic_bytes.len() - 1 {
                 break;
             }
 
-            let tmp = self.dynamic_bytes[idx];
-            self.dynamic_bytes[idx] = self.dynamic_bytes[idx].inc();
-            let progress = tmp > self.dynamic_bytes[idx];
+            let old_value = slf.dynamic_bytes[idx];
+            slf.dynamic_bytes[idx] = slf.dynamic_bytes[idx].inc();
+            let progress = old_value > slf.dynamic_bytes[idx];
             if progress && idx != 0 {
                 idx -= 1;
             } else {
@@ -118,14 +116,7 @@ impl KeyPool {
             }
         }
 
-        KeyPool {
-            dynamic_ms_cap: self.dynamic_ms_cap.clone(),
-            parition_count: self.parition_count.clone(),
-            static_ms_bytes: self.static_ms_bytes.clone(),
-            dynamic_bytes: self.dynamic_bytes.clone(),
-            static_ls_bytes: self.static_ls_bytes.clone(),
-        }
-
+        slf.clone()
     }
 }
 
@@ -134,7 +125,7 @@ impl fmt::Display for KeyPool {
         write!(f,
                "({},{}:{:?})",
                self.dynamic_ms_cap,
-               self.parition_count,
+               self.dynamic_ms_start,
                self.dynamic_bytes)
     }
 }
@@ -154,7 +145,7 @@ impl ToJson for KeyPool {
     fn to_json(&self) -> Json {
         let mut d = BTreeMap::new();
         d.insert("dynamic_ms_cap".to_string(), self.dynamic_ms_cap.to_json());
-        d.insert("parition_count".to_string(), self.parition_count.to_json());
+        d.insert("dynamic_ms_start".to_string(), self.dynamic_ms_start.to_json());
         d.insert("static_ms_bytes".to_string(),
                  self.static_ms_bytes.to_json());
         d.insert("dynamic_bytes".to_string(), self.dynamic_bytes.to_json());

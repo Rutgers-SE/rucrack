@@ -13,7 +13,7 @@ fn dc(cipher_text: &Vec<u8>,
       sender: &Sender<Vec<u8>>,
       tdone: &Sender<bool>)
       -> KeyPool {
-    let mut key = key.clone();
+    let key = key.clone();
     match decrypt(&cipher_text[..], &key.to_vec()) {
         Ok(decrypted_data) => {
             match from_utf8(&decrypted_data) {
@@ -53,44 +53,61 @@ pub fn crack(kp: KeyPool, cipher_text: Vec<u8>, thread_count: i64) -> Vec<Vec<u8
     // com. channels
     let (tx, rx) = channel();
     let (tdone, rdone) = channel::<bool>();
-    let (tkill, _rkill) = channel();
+    let (tcount, rcount) = channel();
 
     // let ref rcc = tc.as_ref();
+    let klen = keys.len();
 
     for key in keys {
         let mut key = key.clone();
         let tx = tx.clone();
+        let tcount = tcount.clone();
         let tdone = tdone.clone();
         let cipher_text = cipher_text.clone();
 
         threads.push(thread::spawn(move || {
             loop {
-                key = dc(&cipher_text, &key, &tx, &tdone);
-                if key.is_done() {
+                if !key.is_done() {
+                    key = dc(&cipher_text, &key, &tx, &tdone);
+                } else {
+                    tcount.send(1).unwrap();
                     break;
                 }
             }
         }));
     }
 
+    let mut count = 0;
     let mut output = vec![]; // This will become the list of potential keys
 
     loop {
         match rdone.recv() {
             Ok(value) if value => {
                 let v = rx.recv().unwrap();
-                tkill.send(()).unwrap();
                 output.push(v);
                 println!("Key sent!");
                 break;
             }
             _ => (),
         }
+
+        match rcount.recv() {
+            Ok(n) => {
+                count = count + n;
+            }
+            _ => ()
+        }
+
+        if count == klen {
+            break;
+        }
     }
 
     for t in threads {
         t.join().unwrap();
     }
+
+    println!("I got here!");
 
     output
 }
