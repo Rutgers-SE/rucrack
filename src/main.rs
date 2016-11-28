@@ -35,6 +35,7 @@ use std::io::{stdin, Read};
 // use std::collections::HashSet;
 use std::env::args;
 
+
 #[derive(Debug)]
 enum Op {
     AddSlave(Url),
@@ -86,15 +87,15 @@ fn master_repl() {
     let w = Worker::builder(4, ip.clone()); // TODO: 4 is the thread count
     let mut socket_set = match args().nth(5) {
         Some(filename) => file_to_vec(filename),
-        None => vec![]
+        None => vec![],
     };
     let mut iv_bytes: Option<Vec<u8>> = match args().nth(3) {
         Some(filename) => read_r4c_file(filename),
-        None => None
+        None => None,
     };
     let mut cipher_text: Option<Vec<u8>> = match args().nth(4) {
         Some(filename) => read_r4c_file(filename),
-        None => None
+        None => None,
     };
 
     println!("{:?}", w);
@@ -187,47 +188,53 @@ fn master_repl() {
     }
 }
 
-fn slave_repl() {
-    fn handle(req: &mut iron::Request) -> i::IronResult<iron::Response> {
-        match req.get::<Params>() {
-            Ok(map) => {
-                match map.find(&["key"]) {
-                    Some(&params::Value::String(ref key)) => {
-                        match map.find(&["cipher"]) {
-                            Some(&params::Value::String(ref cipher)) => {
-                                let cipher_text: Vec<u8> = json::decode(&cipher).unwrap();
-                                let kp: KeyPool = json::decode(&key).unwrap();
-                                // println!("{}, {:?}", kp, cipher_text);
+fn handle(req: &mut iron::Request) -> i::IronResult<iron::Response> {
+    let core_count: i64 = match args().nth(3) {
+        Some(s) => match s.parse::<i64>() {
+            Ok(e) => e,
+            Err(e) => panic!("bruh {:?} {}", e, s)
+        },
+        None => panic!(".... pass an argument{}")
+    };
+    match req.get::<Params>() {
+        Ok(map) => {
+            match map.find(&["key"]) {
+                Some(&params::Value::String(ref key)) => {
+                    match map.find(&["cipher"]) {
+                        Some(&params::Value::String(ref cipher)) => {
+                            let cipher_text: Vec<u8> = json::decode(&cipher).unwrap();
+                            let kp: KeyPool = json::decode(&key).unwrap();
+                            // println!("{}, {:?}", kp, cipher_text);
 
-                                println!("Starting Crack");
-                                // NOTE: we assuming 4 threads per machine
-                                let start = PreciseTime::now();
-                                let keys = crack(kp, cipher_text, 4);
-                                let end = PreciseTime::now();
-                                println!("Finished Crack");
-                                println!("number of potential keys {:?}", keys.len());
-                                println!("potential keys {:?}", keys);
-                                println!("Time taken {}\n", start.to(end));
+                            println!("Starting Crack");
+                            // NOTE: we assuming 4 threads per machine
+                            let start = PreciseTime::now();
+                            let keys = crack(kp, cipher_text, core_count);
+                            let end = PreciseTime::now();
+                            println!("Finished Crack");
+                            println!("number of potential keys {:?}", keys.len());
+                            println!("potential keys {:?}", keys);
+                            println!("Time taken {}\n", start.to(end));
 
-                                let key_json = json::encode(&keys).unwrap();
-                                println!("{}", key_json);
-                                return Ok(iron::Response::with((iron::status::Ok,
-                                                                key_json.to_string())));
-                            }
-                            _ => println!("Invalid request"),
+                            let key_json = json::encode(&keys).unwrap();
+                            println!("{}", key_json);
+                            return Ok(iron::Response::with((iron::status::Ok,
+                                                            key_json.to_string())));
                         }
+                        _ => println!("Invalid request"),
                     }
-                    _ => println!("Invalid request"),
                 }
-            }
-            Err(e) => {
-                println!("{:?}", e);
+                _ => println!("Invalid request"),
             }
         }
-
-
-        Ok(iron::Response::with((iron::status::Ok, "Hello, From Iron")))
+        Err(e) => {
+            println!("{:?}", e);
+        }
     }
+    Ok(iron::Response::with((iron::status::Ok, "Hello, From Iron")))
+}
+
+fn slave_repl() {
     let base = match args().nth(2) {
         Some(port) => port,
         None => panic!("You must supply the IP and port combo"),
