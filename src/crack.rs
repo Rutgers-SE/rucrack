@@ -22,7 +22,7 @@ fn dc(cipher_text: Vec<u8>,
                                 tdone.send(true).unwrap();
                                 println!("Sent key");
                             }
-                            Err(e) => panic!("Sorry master.. I fucked up... -- {}", e),
+                            Err(e) => panic!("Sorry master.. I failed... -- {}", e),
                         }
                     }
 
